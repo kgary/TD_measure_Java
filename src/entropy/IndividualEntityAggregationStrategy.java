@@ -16,7 +16,13 @@ public class IndividualEntityAggregationStrategy implements AggregationStrategy 
         StringBuilder individualKey = new StringBuilder();
         
         for (int layerIndex: layerIndices) {
-            individualKey.append(timePoint[layerIndex][individualIndex]);
+            String[] layerData = timePoint[layerIndex]; 
+            if (layerData == null || layerData.length <= individualIndex) {
+                continue; 
+                
+            } else {
+                individualKey.append(layerData[individualIndex]);
+            }
         }
 
         return Arrays.asList(individualKey.toString());
