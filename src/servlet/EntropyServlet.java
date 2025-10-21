@@ -116,7 +116,7 @@ public class EntropyServlet extends HttpServlet {
 
             if (result == null) {
                 logger.warn("Session not found: sessionId={}", sessionId);
-                resp.setStatus(404);
+                resp.setStatus(409);
                 sendJsonError(resp, "Session ID not found");
                 return;
             }
