@@ -383,17 +383,6 @@ public class SessionEntropyService {
                 scenarioId,
                 new EntropyObject(scenarioLayers)
             );
-
-            DynamicsCalculator dynamicsFacade = new DynamicsCalculator();
-            Map<String, List<Object>> teamDynamics =
-                dynamicsFacade.calculateDynamics(scenarioLayers, layers);
-            Map<String, List<Object>> roleMappedDynamics =
-                dynamicsFacade.replaceTraineeKeys(teamDynamics, traineeRoles);
-            resultStorageDAO.writeTeamDynamics(
-                sessionID,
-                scenarioId,
-                roleMappedDynamics
-            );
         }
 
         Map<String, EntropyObject> perturbationEntropyMap = new HashMap<>();
@@ -497,6 +486,16 @@ public class SessionEntropyService {
             perturbationEntropyMap.put(
                 perturbationId,
                 new EntropyObject(perturbationLayers)
+            );
+        DynamicsCalculator dynamicsFacade = new DynamicsCalculator();
+            Map<String, List<Object>> teamDynamics =
+                dynamicsFacade.calculateDynamics(perturbationLayers, layers);
+            Map<String, List<Object>> roleMappedDynamics =
+                dynamicsFacade.replaceTraineeKeys(teamDynamics, traineeRoles);
+            resultStorageDAO.writeTeamDynamics(
+                sessionID,
+                perturbationId,
+                roleMappedDynamics
             );
         }
 
