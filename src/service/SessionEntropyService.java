@@ -401,32 +401,15 @@ public class SessionEntropyService {
                 scenarioId,
                 new EntropyObject(scenarioLayers)
             );
-
-            DynamicsCalculator dynamicsFacade = new DynamicsCalculator();
-            Map<String, List<Object>> teamDynamics =
-                dynamicsFacade.calculateDynamics(scenarioLayers, layers);
-            Map<String, List<Object>> roleMappedDynamics =
-                dynamicsFacade.replaceTraineeKeys(teamDynamics, traineeRoles);
-            resultStorageDAO.writeTeamDynamics(
-                sessionID,
-                scenarioId,
-                roleMappedDynamics
-            );
         }
 
         Map<String, EntropyObject> perturbationEntropyMap = new HashMap<>();
-        for (Map.Entry<String, Integer> perturbation : sessionMetadata
+        for (Map.Entry<String, List<Integer>> perturbation : sessionMetadata
             .getPertubationIDs()
             .entrySet()) {
             String perturbationId = perturbation.getKey();
-            int startIdx = perturbation.getValue();
-            int endIdx = determineEndIdx(
-                sessionMetadata.getPertubationIDs(),
-                perturbationId,
-                startIdx,
-                layerData.length
-            );
-
+            int startIdx = perturbation.getValue().get(0);
+            int endIdx = perturbation.getValue().get(1);
             Map<EntropyLayer, double[]> perturbationLayers = new HashMap<>();
             String[][][] slicedData = sliceLayerData(
                 layerData,
@@ -521,6 +504,16 @@ public class SessionEntropyService {
             perturbationEntropyMap.put(
                 perturbationId,
                 new EntropyObject(perturbationLayers)
+            );
+        DynamicsCalculator dynamicsFacade = new DynamicsCalculator();
+            Map<String, List<Object>> teamDynamics =
+                dynamicsFacade.calculateDynamics(perturbationLayers, layers);
+            Map<String, List<Object>> roleMappedDynamics =
+                dynamicsFacade.replaceTraineeKeys(teamDynamics, traineeRoles);
+            resultStorageDAO.writeTeamDynamics(
+                sessionID,
+                perturbationId,
+                roleMappedDynamics
             );
         }
 
