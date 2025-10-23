@@ -3,6 +3,7 @@ package service;
 import config.*;
 import dao.*;
 import entropy.*;
+import exception.*;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -166,6 +167,22 @@ public class SessionEntropyService {
         return new EntropyObject(sliced);
     }
 
+    private void validateSessionComplete(String sessionID, List<String> rawData)
+        throws IncompleteSessionException {
+        boolean foundApplicationStop = rawData
+            .stream()
+            .filter(line -> line.contains("\"scenarioEvent\":\"Application\""))
+            .anyMatch(line -> line.contains("\"event\":\"stop\""));
+
+        if (!foundApplicationStop) {
+            throw new IncompleteSessionException(
+                "Session " +
+                    sessionID +
+                    " is incomplete - missing Application stop event"
+            );
+        }
+    }
+
     public void CalculateEntropy(String sessionID, String dataSourceType)
         throws IOException {
         if (dataSourceType == null || dataSourceType.isEmpty()) {
@@ -184,6 +201,7 @@ public class SessionEntropyService {
             );
 
         List<String> rawData = dataSource.readData(sessionID);
+        validateSessionComplete(sessionID, rawData);
         List<List<List<String>>> layers = parser.parseToSTTCLayers(rawData);
         Map<String, String> traineeRoles = parser.getTraineeInfo(rawData);
         SessionMetadata sessionMetadata = parser.getSessionMetadata();

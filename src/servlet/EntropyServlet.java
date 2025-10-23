@@ -1,6 +1,7 @@
 package servlet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import exception.IncompleteSessionException;
 import java.io.IOException;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -134,6 +135,10 @@ public class EntropyServlet extends HttpServlet {
             );
             resp.setStatus(400);
             sendJsonError(resp, "Invalid number format for query parameters");
+        } catch (IncompleteSessionException e) {
+            logger.warn("Incomplete session data: {}", e.getMessage());
+            resp.setStatus(422);
+            sendJsonError(resp, "Incomplete session: " + e.getMessage());
         } catch (Exception e) {
             logger.error(
                 "Server error processing request for sessionId={}: {}",
