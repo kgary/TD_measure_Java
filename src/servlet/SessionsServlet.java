@@ -21,7 +21,7 @@ public class SessionsServlet extends HttpServlet {
     );
 
     private ObjectMapper json;
-    private SessionEntropyService sessionEntropyService;
+    private final SessionEntropyService sessionEntropyService;
 
     @Override
     public void init() throws ServletException {
@@ -36,10 +36,27 @@ public class SessionsServlet extends HttpServlet {
     @Override
     public void doGet(HttpServletRequest req, HttpServletResponse resp)
         throws ServletException, IOException {
+        logger.debug("GET /sessions - Fetching all sessions");
         try {
-            Object result = sessionEntropyService.listAllSessions();
+            Map<String, Object> result =
+                sessionEntropyService.listAllSessions();
+            logger.info(
+                "Successfully retrieved {} sessions",
+                result.get("totalCount")
+            );
             sendJsonResponse(resp, result);
+        } catch (UnsupportedOperationException e) {
+            logger.warn(
+                "List sessions operation not supported: {}",
+                e.getMessage()
+            );
+            resp.setStatus(501);
+            sendJsonError(
+                resp,
+                "List sessions not supported for current storage configuration"
+            );
         } catch (Exception e) {
+            logger.error("Error fetching sessions list: {}", e.getMessage(), e);
             resp.setStatus(500);
             sendJsonError(resp, "Server error: " + e.getMessage());
         }
