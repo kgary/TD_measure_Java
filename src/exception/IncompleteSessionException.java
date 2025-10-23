@@ -1,6 +1,6 @@
 package exception;
 
-public class IncompleteSessionException extends Exception {
+public class IncompleteSessionException extends RuntimeException {
 
     public IncompleteSessionException(String message) {
         super(message);

@@ -24,4 +24,5 @@ public interface ResultStorageDAO {
         String sessionID,
         String scenarioID
     ) throws IOException;
+    public List<String> listAllSessions() throws IOException;
 }

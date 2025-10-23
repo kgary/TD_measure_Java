@@ -178,4 +178,12 @@ public class FileResultStorageDAOImpl implements ResultStorageDAO {
         );
         return null;
     }
+
+    @Override
+    public List<String> listAllSessions() throws IOException {
+        throw new UnsupportedOperationException(
+            "Listing all sessions is not supported for file-based storage. " +
+                "This operation is only available when using MongoDB storage."
+        );
+    }
 }

@@ -183,8 +183,16 @@ public class SessionEntropyService {
         }
     }
 
+    public Map<String, Object> listAllSessions() throws IOException {
+        List<String> sessionIDs = defaultResultStorage.listAllSessions();
+        Map<String, Object> response = new HashMap<>();
+        response.put("sessionIDs: ", sessionIDs);
+        response.put("totalCount", sessionIDs.size());
+        return response;
+    }
+
     public void CalculateEntropy(String sessionID, String dataSourceType)
-        throws IOException {
+        throws IOException, IncompleteSessionException {
         if (dataSourceType == null || dataSourceType.isEmpty()) {
             dataSourceType = defaultConfig.getDataSourceType();
         }
@@ -505,7 +513,7 @@ public class SessionEntropyService {
                 perturbationId,
                 new EntropyObject(perturbationLayers)
             );
-        DynamicsCalculator dynamicsFacade = new DynamicsCalculator();
+            DynamicsCalculator dynamicsFacade = new DynamicsCalculator();
             Map<String, List<Object>> teamDynamics =
                 dynamicsFacade.calculateDynamics(perturbationLayers, layers);
             Map<String, List<Object>> roleMappedDynamics =

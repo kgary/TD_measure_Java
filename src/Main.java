@@ -96,6 +96,10 @@ public class Main {
             "/bindSessions/*"
         );
         logger.info("Registered endpoint: /bindSessions/*");
+        context.addServlet(
+            new ServletHolder(new SessionsServlet(sessionEntropyService)),
+            "/sessions"
+        );
 
         server.start();
         logger.info("Server started successfully on port 8081");
@@ -104,6 +108,7 @@ public class Main {
         logger.info("  - http://localhost:8081/session/*");
         logger.info("  - http://localhost:8081/teamdynamics/*");
         logger.info("  - http://localhost:8081/bindSessions/*");
+        logger.info("  - http://localhost:8081/sessions/*");
 
         server.join();
     }
