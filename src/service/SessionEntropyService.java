@@ -397,18 +397,12 @@ public class SessionEntropyService {
         }
 
         Map<String, EntropyObject> perturbationEntropyMap = new HashMap<>();
-        for (Map.Entry<String, Integer> perturbation : sessionMetadata
+        for (Map.Entry<String, List<Integer>> perturbation : sessionMetadata
             .getPertubationIDs()
             .entrySet()) {
             String perturbationId = perturbation.getKey();
-            int startIdx = perturbation.getValue();
-            int endIdx = determineEndIdx(
-                sessionMetadata.getPertubationIDs(),
-                perturbationId,
-                startIdx,
-                layerData.length
-            );
-
+            int startIdx = perturbation.getValue().get(0);
+            int endIdx = perturbation.getValue().get(1);
             Map<EntropyLayer, double[]> perturbationLayers = new HashMap<>();
             String[][][] slicedData = sliceLayerData(
                 layerData,
