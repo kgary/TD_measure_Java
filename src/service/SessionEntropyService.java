@@ -214,7 +214,7 @@ public class SessionEntropyService {
             );
 
         List<String> rawData = dataSource.readData(sessionID);
-        validateSessionComplete(sessionID, rawData);
+        // validateSessionComplete(sessionID, rawData);
         List<List<List<String>>> layers = parser.parseToSTTCLayers(rawData);
         Map<String, String> traineeRoles = parser.getTraineeInfo(rawData);
         SessionMetadata sessionMetadata = parser.getSessionMetadata();
