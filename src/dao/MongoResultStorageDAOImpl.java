@@ -83,6 +83,40 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
     }
 
     @Override
+    public void storeSessionIds(
+        Integer giftSessionId,
+        String unitySessionId,
+        String scenarioId
+    ) throws IOException {
+        String collectionName = mongoCollection + "-session-ids";
+
+        try {
+            MongoCollection<Document> collection = getCollection(
+                "-sessionIDs"
+            );
+
+            Map<String, Object> record = new java.util.LinkedHashMap<>();
+            record.put("giftSessionId", giftSessionId);
+            record.put("unitySessionId", unitySessionId);
+            record.put("scenarioId", scenarioId);
+
+            String jsonString = json.writeValueAsString(record);
+            Document doc = Document.parse(jsonString);
+            collection.insertOne(doc);
+
+            System.out.println(
+                "MongoDB: Successfully stored session IDs to collection: " +
+                    collectionName
+            );
+        } catch (Exception e) {
+            throw new IOException(
+                "MongoDB Error storing session IDs: " + e.getMessage(),
+                e
+            );
+        }
+    }
+
+    @Override
     public void writeEntropy(SessionEntropyData sessionEntropyData)
         throws IOException {
         String collectionName = mongoCollection + ENTROPY_COLLECTION_SUFFIX;

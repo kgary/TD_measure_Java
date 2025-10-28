@@ -11,6 +11,10 @@ public interface ResultStorageDAO {
 
     public void writeMetadata(SessionMetadata sessionMetadata)
         throws IOException;
+    
+    public void storeSessionIds(Integer giftSessionId, String unitySessionId, String scenarioId)
+        throws IOException;
+        
     public SessionEntropyData readEntropy(String sessionID) throws IOException;
     public SessionMetadata readMetadata(String sessionID) throws IOException;
 

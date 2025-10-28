@@ -48,7 +48,7 @@ public class StoreSessionidServlet extends HttpServlet {
                 logger.warn("POST /storesession - missing required fields");
                 resp.setStatus(400);
                 sendJsonError(resp, Map.of(
-                    "error", "giftSessionId (int) and unitySessionId (string) are required"
+                    "error", "All Fields are required"
                 ));
                 return;
             }
@@ -68,7 +68,7 @@ public class StoreSessionidServlet extends HttpServlet {
                 logger.warn("POST /storesession - invalid types or empty values");
                 resp.setStatus(400);
                 sendJsonError(resp, Map.of(
-                    "error", "Invalid payload: giftSessionId must be an integer; unitySessionId must be a non-empty string"
+                    "error", "Invalid payload: unitySessionId is empty"
                 ));
                 return;
             }
@@ -83,12 +83,12 @@ public class StoreSessionidServlet extends HttpServlet {
                 logger.warn("POST /storesession - invalid scenarioId");
                 resp.setStatus(400);
                 sendJsonError(resp, Map.of(
-                    "error", "Invalid payload: scenarioId must be a non-empty string"
+                    "error", "Invalid payload: scenarioId is empty"
                 ));
                 return;
             }
 
-            // sessionEntropyService.StoreSessionIds(giftSessionId, unitySessionId);
+            sessionEntropyService.StoreSessionIds(giftSessionId, unitySessionId, scenarioID);
 
             resp.setStatus(201);
             sendJsonResponse(resp, Map.of(

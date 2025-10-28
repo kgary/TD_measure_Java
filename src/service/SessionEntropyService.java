@@ -191,6 +191,11 @@ public class SessionEntropyService {
         return response;
     }
 
+    public void StoreSessionIds(Integer giftSessionId, String unitySessionId, String scenarioId)
+        throws IOException {
+        defaultResultStorage.storeSessionIds(giftSessionId, unitySessionId, scenarioId);
+    }
+
     public void CalculateEntropy(String sessionID, String dataSourceType)
         throws IOException, IncompleteSessionException {
         if (dataSourceType == null || dataSourceType.isEmpty()) {
