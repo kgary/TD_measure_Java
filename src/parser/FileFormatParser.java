@@ -510,13 +510,13 @@ public class FileFormatParser implements DataParser {
                 currentTimeIndex++;
             } else if ("Domain".equals(eventType)) {
                 if ("perturbation".equals(node.get("subtype").asText()) && "start".equals(node.get("event").asText())) {
-                    String perturbationID = scenarioID + "_" + node.get("subtype_id").asText();
+                    String perturbationID = scenarioID;
                     if (!perturbationIDs.containsKey(perturbationID)) {
                         perturbationTimes.add(currentTimeIndex);
                         perturbationIDs.put(perturbationID, perturbationTimes);
                     }
                 } else if ("perturbation".equals(node.get("subtype").asText()) && "stop".equals(node.get("event").asText())) {
-                    String perturbationID = scenarioID + "_" + node.get("subtype_id").asText();
+                    String perturbationID = scenarioID;
                     if (perturbationIDs.containsKey(perturbationID)) {
                         perturbationTimes = perturbationIDs.get(perturbationID);
                         perturbationTimes.add(currentTimeIndex);
