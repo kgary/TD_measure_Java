@@ -12,11 +12,12 @@ public interface ResultStorageDAO {
     public void writeMetadata(SessionMetadata sessionMetadata)
         throws IOException;
     
-    public void storeSessionIds(Integer giftSessionId, String unitySessionId, String scenarioId)
+    public void storeSessionIds(List<Integer> giftSessionIds, String unitySessionId, List<String> scenarioIds)
         throws IOException;
         
     public SessionEntropyData readEntropy(String sessionID) throws IOException;
     public SessionMetadata readMetadata(String sessionID) throws IOException;
+    public Map<String, List<Object>> readSessionIds(String unitySessionId) throws IOException;
 
     public void writeTeamDynamics(
         String sessionID,

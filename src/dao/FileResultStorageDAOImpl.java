@@ -119,9 +119,9 @@ public class FileResultStorageDAOImpl implements ResultStorageDAO {
 
     @Override
     public void storeSessionIds(
-        Integer giftSessionId,
+        List<Integer> giftSessionId,
         String unitySessionId,
-        String scenarioId
+        List<String> scenarioId
     ) throws IOException {
         String idsFilePath = filePath.replace(".jsonl", "_sessionIDs.jsonl");
         File file = new File(idsFilePath);
@@ -141,6 +141,34 @@ public class FileResultStorageDAOImpl implements ResultStorageDAO {
         try (FileWriter writer = new FileWriter(file, true)) {
             writer.write(jsonLine + "\n");
         }
+    }
+
+    @Override
+    public Map<String, List<Object>> readSessionIds(String unitySessionId) throws IOException {
+        String idsFilePath = filePath.replace(".jsonl", "_sessionIDs.jsonl");
+        File file = new File(idsFilePath);
+        if (!file.exists()) {
+            return null;
+        }
+        List<String> lines = Files.readAllLines(Paths.get(idsFilePath));
+        for (String line : lines) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> record = json.readValue(line, Map.class);
+            if (
+                record.containsKey("unitySessionId") &&
+                record.get("unitySessionId").equals(unitySessionId)
+            ) {
+                Map<String, List<Object>> result = new LinkedHashMap<>();
+                @SuppressWarnings("unchecked")
+                List<Object> giftIds = (List<Object>) record.get("giftSessionId");
+                @SuppressWarnings("unchecked")
+                List<Object> scenarioIds = (List<Object>) record.get("scenarioId");
+                result.put("giftSessionIds", giftIds);
+                result.put("scenarioIds", scenarioIds);
+                return result;
+            }
+        }
+        return null;
     }
 
     @Override

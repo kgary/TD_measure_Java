@@ -29,10 +29,10 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
     private final String METADATA_COLLECTION_SUFFIX = "-metadata";
 
     public MongoResultStorageDAOImpl(
-        String mongoUri,
-        String mongoDatabase,
-        String mongoCollection,
-        String csvExportDirectory
+            String mongoUri,
+            String mongoDatabase,
+            String mongoCollection,
+            String csvExportDirectory
     ) {
         this.mongoUri = mongoUri;
         this.mongoDatabase = mongoDatabase;
@@ -49,51 +49,53 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
 
     @Override
     public void writeMetadata(SessionMetadata sessionMetadata)
-        throws IOException {
+            throws IOException {
         String collectionName = mongoCollection + METADATA_COLLECTION_SUFFIX;
 
         try {
             String jsonString = json.writeValueAsString(sessionMetadata);
 
             MongoCollection<Document> collection = getCollection(
-                METADATA_COLLECTION_SUFFIX
+                    METADATA_COLLECTION_SUFFIX
             );
             Document doc = Document.parse(jsonString);
 
             Document filter = new Document(
-                "sessionID",
-                sessionMetadata.getSessionID()
+                    "sessionID",
+                    sessionMetadata.getSessionID()
             );
             collection.replaceOne(
-                filter,
-                doc,
-                new ReplaceOptions().upsert(true)
+                    filter,
+                    doc,
+                    new ReplaceOptions().upsert(true)
             );
 
             System.out.println(
-                "MongoDB: Successfully wrote Session Metadata to collection: " +
-                    collectionName
+                    "MongoDB: Successfully wrote Session Metadata to collection: "
+                    + collectionName
             );
         } catch (Exception e) {
             throw new IOException(
-                "MongoDB Error writing metadata: " + e.getMessage(),
-                e
+                    "MongoDB Error writing metadata: " + e.getMessage(),
+                    e
             );
         }
     }
 
     @Override
     public void storeSessionIds(
-        Integer giftSessionId,
-        String unitySessionId,
-        String scenarioId
+            List<Integer> giftSessionId,
+            String unitySessionId,
+            List<String> scenarioId
     ) throws IOException {
         String collectionName = mongoCollection + "-session-ids";
 
         try {
             MongoCollection<Document> collection = getCollection(
-                "-sessionIDs"
+                    "-sessionIDs"
             );
+
+            Document filter = new Document("unitySessionId", unitySessionId);
 
             Map<String, Object> record = new java.util.LinkedHashMap<>();
             record.put("giftSessionId", giftSessionId);
@@ -102,111 +104,156 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
 
             String jsonString = json.writeValueAsString(record);
             Document doc = Document.parse(jsonString);
-            collection.insertOne(doc);
+            collection.replaceOne(filter,
+                    doc,
+                    new ReplaceOptions().upsert(true));
 
             System.out.println(
-                "MongoDB: Successfully stored session IDs to collection: " +
-                    collectionName
+                    "MongoDB: Successfully stored session IDs to collection: "
+                    + collectionName
             );
         } catch (Exception e) {
             throw new IOException(
-                "MongoDB Error storing session IDs: " + e.getMessage(),
-                e
+                    "MongoDB Error storing session IDs: " + e.getMessage(),
+                    e
+            );
+        }
+    }
+
+    @Override
+    public Map<String, List<Object>> readSessionIds(
+            String unitySessionId
+    ) throws IOException {
+        String collectionName = mongoCollection + "-session-ids";
+
+        try {
+            MongoCollection<Document> collection = getCollection(
+                    "-sessionIDs"
+            );
+            Document query = new Document("unitySessionId", unitySessionId);
+            Document result = collection.find(query).first();
+
+            if (result != null) {
+                String jsonString = result.toJson();
+                @SuppressWarnings("unchecked")
+                Map<String, List<Object>> sessionIds = json.readValue(
+                        jsonString,
+                        Map.class
+                );
+
+                System.out.println(
+                        "MongoDB: Successfully read session IDs for Gift Session ID: "
+                        + unitySessionId
+                        + " from collection: "
+                        + collectionName
+                );
+                return sessionIds;
+            }
+            System.out.println(
+                    "MongoDB: Read attempt for session IDs from collection: "
+                    + collectionName
+            );
+            return null;
+        } catch (Exception e) {
+            throw new IOException(
+                    "MongoDB Error reading session IDs: " + e.getMessage(),
+                    e
             );
         }
     }
 
     @Override
     public void writeEntropy(SessionEntropyData sessionEntropyData)
-        throws IOException {
+            throws IOException {
         String collectionName = mongoCollection + ENTROPY_COLLECTION_SUFFIX;
 
         try {
             String jsonString = json.writeValueAsString(sessionEntropyData);
 
             MongoCollection<Document> collection = getCollection(
-                ENTROPY_COLLECTION_SUFFIX
+                    ENTROPY_COLLECTION_SUFFIX
             );
             Document doc = Document.parse(jsonString);
 
             Document filter = new Document(
-                "sessionID",
-                sessionEntropyData.getSessionID()
+                    "sessionID",
+                    sessionEntropyData.getSessionID()
             );
             collection.replaceOne(
-                filter,
-                doc,
-                new ReplaceOptions().upsert(true)
+                    filter,
+                    doc,
+                    new ReplaceOptions().upsert(true)
             );
 
             System.out.println(
-                "MongoDB: Successfully wrote SessionEntropyData to collection: " +
-                    collectionName
+                    "MongoDB: Successfully wrote SessionEntropyData to collection: "
+                    + collectionName
             );
-            String fileName =
-                csvExportDirectory +
-                "/" +
-                sessionEntropyData.getSessionID() +
-                "-all-entropy-ts.csv";
+            String fileName
+                    = csvExportDirectory
+                    + "/"
+                    + sessionEntropyData.getSessionID()
+                    + "-all-entropy-ts.csv";
 
             try (
-                PrintWriter writer = new PrintWriter(
-                    new FileWriter(fileName, true)
-                )
-            ) {
+                    PrintWriter writer = new PrintWriter(
+                            new FileWriter(fileName, true)
+                    )) {
                 if (new java.io.File(fileName).length() == 0) {
                     writer.println(
-                        "sessionID,entropyType,keyID,layer,entropyValue"
+                            "sessionID,entropyType,keyID,layer,entropyValue"
                     );
                 }
                 this.exportEntropyMapToCsv(
-                    writer,
-                    sessionEntropyData.getSessionID(),
-                    "SCENARIO",
-                    sessionEntropyData.getScenarioEntropy()
-                );
-                this.exportEntropyMapToCsv(
-                    writer,
-                    sessionEntropyData.getSessionID(),
-                    "PERTURBATION",
-                    sessionEntropyData.getPertubationEntropy()
-                );
-                EntropyObject sessionSummary =
-                    sessionEntropyData.getSession_entropy();
-                if (sessionSummary != null) {
-                    this.exportEntropyObjectToCsv(
                         writer,
                         sessionEntropyData.getSessionID(),
-                        "SESSION_SUMMARY",
-                        "SESSION",
-                        sessionSummary
+                        "SCENARIO",
+                        sessionEntropyData.getScenarioEntropy()
+                );
+                this.exportEntropyMapToCsv(
+                        writer,
+                        sessionEntropyData.getSessionID(),
+                        "PERTURBATION",
+                        sessionEntropyData.getPertubationEntropy()
+                );
+                EntropyObject sessionSummary
+                        = sessionEntropyData.getSession_entropy();
+                if (sessionSummary != null) {
+                    this.exportEntropyObjectToCsv(
+                            writer,
+                            sessionEntropyData.getSessionID(),
+                            "SESSION_SUMMARY",
+                            "SESSION",
+                            sessionSummary
                     );
                 }
 
                 System.out.println(
-                    "CSV: Successfully exported SessionEntropyData to: " +
-                        fileName
+                        "CSV: Successfully exported SessionEntropyData to: "
+                        + fileName
                 );
             } catch (IOException csvE) {
                 System.err.println(
-                    "CSV Error writing entropy data: " + csvE.getMessage()
+                        "CSV Error writing entropy data: " + csvE.getMessage()
                 );
             }
         } catch (Exception e) {
             throw new IOException(
-                "MongoDB Error writing entropy data: " + e.getMessage(),
-                e
+                    "MongoDB Error writing entropy data: " + e.getMessage(),
+                    e
             );
         }
     }
 
     private void exportEntropyMapToCsv(
-        PrintWriter writer,
-        String sessionID,
-        String entropyType,
-        Map<String, EntropyObject> entropyMap
+            PrintWriter writer,
+            String sessionID,
+            String entropyType,
+            Map<String, EntropyObject> entropyMap
     ) {
-        if (entropyMap == null) return;
+        if (entropyMap == null) {
+            return;
+        }
 
         for (Map.Entry<String, EntropyObject> entry : entropyMap.entrySet()) {
             String keyID = entry.getKey();
@@ -214,42 +261,42 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
 
             if (entropyObj != null) {
                 this.exportEntropyObjectToCsv(
-                    writer,
-                    sessionID,
-                    entropyType,
-                    keyID,
-                    entropyObj
+                        writer,
+                        sessionID,
+                        entropyType,
+                        keyID,
+                        entropyObj
                 );
             }
         }
     }
 
     private void exportEntropyObjectToCsv(
-        PrintWriter writer,
-        String sessionID,
-        String entropyType,
-        String keyID,
-        EntropyObject entropyObj
+            PrintWriter writer,
+            String sessionID,
+            String entropyType,
+            String keyID,
+            EntropyObject entropyObj
     ) {
         Map<EntropyLayer, double[]> layerMap = entropyObj.getLayerEntropies();
-        if (layerMap == null) return;
+        if (layerMap == null) {
+            return;
+        }
 
         for (Map.Entry<
-            EntropyLayer,
-            double[]
-        > layerEntry : layerMap.entrySet()) {
+            EntropyLayer, double[]> layerEntry : layerMap.entrySet()) {
             String layerName = layerEntry.getKey().name();
             double[] entropyTimeSeries = layerEntry.getValue();
 
             if (entropyTimeSeries != null) {
                 for (int i = 0; i < entropyTimeSeries.length; i++) {
                     writer.printf(
-                        "%s,%s,%s,%s,%.6f%n",
-                        sessionID,
-                        entropyType,
-                        keyID,
-                        layerName,
-                        entropyTimeSeries[i]
+                            "%s,%s,%s,%s,%.6f%n",
+                            sessionID,
+                            entropyType,
+                            keyID,
+                            layerName,
+                            entropyTimeSeries[i]
                     );
                 }
             }
@@ -258,9 +305,9 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
 
     @Override
     public void writeTeamDynamics(
-        String sessionID,
-        String scenarioID,
-        Map<String, List<Object>> teamDynamics
+            String sessionID,
+            String scenarioID,
+            Map<String, List<Object>> teamDynamics
     ) throws IOException {
         String collectionName = mongoCollection + DYNAMICS_COLLECTION_SUFFIX;
 
@@ -269,40 +316,37 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
                 "Enaction",
                 "Adaptation",
                 "Recovery",
-                "Influence",
-            };
+                "Influence",};
 
             MongoCollection<Document> collection = getCollection(
-                DYNAMICS_COLLECTION_SUFFIX
+                    DYNAMICS_COLLECTION_SUFFIX
             );
             Document existingQuery = new Document(
-                "sessionID",
-                sessionID
+                    "sessionID",
+                    sessionID
             ).append("scenarioID", scenarioID);
             Document existingRecord = collection.find(existingQuery).first();
 
             if (existingRecord != null) {
                 System.out.println(
-                    "MongoDB: Skipping write. Team Dynamics already exist for Session ID: " +
-                        sessionID +
-                        ", Scenario ID: " +
-                        scenarioID
+                        "MongoDB: Skipping write. Team Dynamics already exist for Session ID: "
+                        + sessionID
+                        + ", Scenario ID: "
+                        + scenarioID
                 );
                 return;
             }
 
-            Map<String, Map<String, Object>> labeledDynamics =
-                new java.util.LinkedHashMap<>();
+            Map<String, Map<String, Object>> labeledDynamics
+                    = new java.util.LinkedHashMap<>();
 
             for (Map.Entry<
-                String,
-                List<Object>
-            > entry : teamDynamics.entrySet()) {
+                String, List<Object>> entry : teamDynamics.entrySet()) {
                 String subjectKey = entry.getKey();
                 List<Object> rawMetrics = entry.getValue();
 
-                Map<String, Object> subjectMetrics =
-                    new java.util.LinkedHashMap<>();
+                Map<String, Object> subjectMetrics
+                        = new java.util.LinkedHashMap<>();
                 if (rawMetrics.size() == METRIC_LABELS.length) {
                     for (int i = 0; i < METRIC_LABELS.length; i++) {
                         subjectMetrics.put(METRIC_LABELS[i], rawMetrics.get(i));
@@ -324,20 +368,19 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
             collection.insertOne(doc);
 
             System.out.println(
-                "MongoDB: Successfully wrote Team Dynamics to collection: " +
-                    collectionName +
-                    " (New record for Scenario ID: " +
-                    scenarioID +
-                    ")"
+                    "MongoDB: Successfully wrote Team Dynamics to collection: "
+                    + collectionName
+                    + " (New record for Scenario ID: "
+                    + scenarioID
+                    + ")"
             );
 
-            String fileName =
-                csvExportDirectory + "/" + sessionID + "-dynamics.csv";
+            String fileName
+                    = csvExportDirectory + "/" + sessionID + "-dynamics.csv";
             try (
-                PrintWriter writer = new PrintWriter(
-                    new FileWriter(fileName, true)
-                )
-            ) {
+                    PrintWriter writer = new PrintWriter(
+                            new FileWriter(fileName, true)
+                    )) {
                 if (new java.io.File(fileName).length() == 0) {
                     writer.print("sessionID,scenarioID,subjectID");
                     for (String label : METRIC_LABELS) {
@@ -347,14 +390,12 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
                 }
 
                 for (Map.Entry<
-                    String,
-                    Map<String, Object>
-                > entry : labeledDynamics.entrySet()) {
+                    String, Map<String, Object>> entry : labeledDynamics.entrySet()) {
                     String subjectKey = entry.getKey();
                     Map<String, Object> metrics = entry.getValue();
 
                     writer.print(
-                        sessionID + "," + scenarioID + "," + subjectKey
+                            sessionID + "," + scenarioID + "," + subjectKey
                     );
 
                     for (String label : METRIC_LABELS) {
@@ -364,7 +405,7 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
 
                     if (metrics.containsKey("Raw_Data")) {
                         writer.print(
-                            ",Raw_Data:\"" + metrics.get("Raw_Data") + "\""
+                                ",Raw_Data:\"" + metrics.get("Raw_Data") + "\""
                         );
                     }
 
@@ -372,17 +413,17 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
                 }
 
                 System.out.println(
-                    "CSV: Successfully exported Team Dynamics to: " + fileName
+                        "CSV: Successfully exported Team Dynamics to: " + fileName
                 );
             } catch (IOException csvE) {
                 System.err.println(
-                    "CSV Error writing team dynamics: " + csvE.getMessage()
+                        "CSV Error writing team dynamics: " + csvE.getMessage()
                 );
             }
         } catch (Exception e) {
             throw new IOException(
-                "MongoDB Error writing team dynamics: " + e.getMessage(),
-                e
+                    "MongoDB Error writing team dynamics: " + e.getMessage(),
+                    e
             );
         }
     }
@@ -393,7 +434,7 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
 
         try {
             MongoCollection<Document> collection = getCollection(
-                ENTROPY_COLLECTION_SUFFIX
+                    ENTROPY_COLLECTION_SUFFIX
             );
             Document query = new Document("sessionID", sessionID);
             Document result = collection.find(query).first();
@@ -403,14 +444,14 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
                 return json.readValue(jsonString, SessionEntropyData.class);
             }
             System.out.println(
-                "MongoDB: Read attempt for SessionEntropyData from collection: " +
-                    collectionName
+                    "MongoDB: Read attempt for SessionEntropyData from collection: "
+                    + collectionName
             );
             return null;
         } catch (Exception e) {
             throw new IOException(
-                "MongoDB Error reading entropy data: " + e.getMessage(),
-                e
+                    "MongoDB Error reading entropy data: " + e.getMessage(),
+                    e
             );
         }
     }
@@ -421,7 +462,7 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
 
         try {
             MongoCollection<Document> collection = getCollection(
-                METADATA_COLLECTION_SUFFIX
+                    METADATA_COLLECTION_SUFFIX
             );
             Document query = new Document("sessionID", sessionID);
             Document result = collection.find(query).first();
@@ -431,32 +472,32 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
                 return json.readValue(jsonString, SessionMetadata.class);
             }
             System.out.println(
-                "MongoDB: Read attempt for SessionMetadata from collection: " +
-                    collectionName
+                    "MongoDB: Read attempt for SessionMetadata from collection: "
+                    + collectionName
             );
             return null;
         } catch (Exception e) {
             throw new IOException(
-                "MongoDB Error reading metadata: " + e.getMessage(),
-                e
+                    "MongoDB Error reading metadata: " + e.getMessage(),
+                    e
             );
         }
     }
 
     @Override
     public Map<String, List<Object>> readTeamDynamics(
-        String sessionID,
-        String scenarioID
+            String sessionID,
+            String scenarioID
     ) throws IOException {
         String collectionName = mongoCollection + DYNAMICS_COLLECTION_SUFFIX;
 
         try {
             MongoCollection<Document> collection = getCollection(
-                DYNAMICS_COLLECTION_SUFFIX
+                    DYNAMICS_COLLECTION_SUFFIX
             );
             Document query = new Document("sessionID", sessionID).append(
-                "scenarioID",
-                scenarioID
+                    "scenarioID",
+                    scenarioID
             );
             Document result = collection.find(query).first();
 
@@ -464,36 +505,34 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
                 String jsonString = result.toJson();
                 @SuppressWarnings("unchecked")
                 Map<String, Object> wrapperData = json.readValue(
-                    jsonString,
-                    Map.class
+                        jsonString,
+                        Map.class
                 );
 
                 if (wrapperData.containsKey("teamDynamics")) {
                     @SuppressWarnings("unchecked")
                     Map<String, List<Object>> teamDynamics = (Map<
-                        String,
-                        List<Object>
-                    >) wrapperData.get("teamDynamics");
+                        String, List<Object>>) wrapperData.get("teamDynamics");
                     if (teamDynamics != null) {
                         System.out.println(
-                            "MongoDB: Successfully read Team Dynamics for Session ID: " +
-                                sessionID +
-                                ", Scenario ID: " +
-                                scenarioID
+                                "MongoDB: Successfully read Team Dynamics for Session ID: "
+                                + sessionID
+                                + ", Scenario ID: "
+                                + scenarioID
                         );
                     }
                     return teamDynamics;
                 }
             }
             System.out.println(
-                "MongoDB: Read attempt for Team Dynamics from collection: " +
-                    collectionName
+                    "MongoDB: Read attempt for Team Dynamics from collection: "
+                    + collectionName
             );
             return null;
         } catch (Exception e) {
             throw new IOException(
-                "MongoDB Error reading team dynamics: " + e.getMessage(),
-                e
+                    "MongoDB Error reading team dynamics: " + e.getMessage(),
+                    e
             );
         }
     }
@@ -503,20 +542,20 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
         String collectionName = mongoCollection + ENTROPY_COLLECTION_SUFFIX;
         try {
             MongoCollection<Document> collection = getCollection(
-                ENTROPY_COLLECTION_SUFFIX
+                    ENTROPY_COLLECTION_SUFFIX
             );
             List<String> sessionIDs = new ArrayList<>();
             collection.distinct("sessionID", String.class).into(sessionIDs);
             System.out.println(
-                "MongoDB: Retrieved " +
-                    sessionIDs.size() +
-                    " sessions from collection: " +
-                    collectionName
+                    "MongoDB: Retrieved "
+                    + sessionIDs.size()
+                    + " sessions from collection: "
+                    + collectionName
             );
             return sessionIDs;
         } catch (Exception e) {
             throw new IOException(
-                "MongoDB Error Listing Sessions: " + e.getMessage()
+                    "MongoDB Error Listing Sessions: " + e.getMessage()
             );
         }
     }

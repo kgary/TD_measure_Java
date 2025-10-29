@@ -88,7 +88,7 @@ public class StoreSessionidServlet extends HttpServlet {
                 return;
             }
 
-            sessionEntropyService.StoreSessionIds(giftSessionId, unitySessionId, scenarioID);
+            sessionEntropyService.storeSessionIds(giftSessionId, unitySessionId, scenarioID);
 
             resp.setStatus(201);
             sendJsonResponse(resp, Map.of(
