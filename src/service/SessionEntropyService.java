@@ -11,6 +11,7 @@ import java.util.Map;
 import model.*;
 import parser.*;
 import teamDynamics.DynamicsCalculator;
+import util.LayerStateExporter;
 
 public class SessionEntropyService {
 
@@ -20,13 +21,13 @@ public class SessionEntropyService {
     public SessionEntropyService(ConfigManager configManager) {
         this.defaultConfig = configManager;
         this.defaultResultStorage = ResultStorageFactory.createResultStorage(
-            defaultConfig,
-            defaultConfig.getDataSourceType()
+                defaultConfig,
+                defaultConfig.getDataSourceType()
         );
     }
 
     private static String[][][] convertToArray(
-        List<List<List<String>>> listData
+            List<List<List<String>>> listData
     ) {
         String[][][] arrayData = new String[listData.size()][][];
         for (int i = 0; i < listData.size(); i++) {
@@ -41,9 +42,9 @@ public class SessionEntropyService {
     }
 
     private String[][][] sliceLayerData(
-        String[][][] layerData,
-        int startIdx,
-        int endIdx
+            String[][][] layerData,
+            int startIdx,
+            int endIdx
     ) {
         int sliceLength = endIdx - startIdx;
         String[][][] sliced = new String[sliceLength][][];
@@ -56,10 +57,10 @@ public class SessionEntropyService {
     }
 
     private int determineEndIdx(
-        Map<String, Integer> allIds,
-        String currentId,
-        int startIdx,
-        int totalLength
+            Map<String, Integer> allIds,
+            String currentId,
+            int startIdx,
+            int totalLength
     ) {
         int nextStartIdx = totalLength;
 
@@ -73,26 +74,26 @@ public class SessionEntropyService {
     }
 
     public SessionEntropyData getEntireSessionEntropy(String sessionId)
-        throws IOException {
+            throws IOException {
         return defaultResultStorage.readEntropy(sessionId);
     }
 
     public Map<String, List<Object>> getScenarioTeamDynamics(
-        String sessionId,
-        String scenarioId,
-        String dataSourceType
+            String sessionId,
+            String scenarioId,
+            String dataSourceType
     ) throws IOException {
-        ResultStorageDAO resultStorageDAO =
-            ResultStorageFactory.createResultStorage(
-                defaultConfig,
-                dataSourceType
-            );
+        ResultStorageDAO resultStorageDAO
+                = ResultStorageFactory.createResultStorage(
+                        defaultConfig,
+                        dataSourceType
+                );
         return resultStorageDAO.readTeamDynamics(sessionId, scenarioId);
     }
 
     public EntropyObject getEntropyForScenario(
-        String sessionId,
-        String scenarioId
+            String sessionId,
+            String scenarioId
     ) throws IOException {
         SessionEntropyData data = defaultResultStorage.readEntropy(sessionId);
         if (data == null) {
@@ -102,7 +103,7 @@ public class SessionEntropyService {
     }
 
     public SessionMetadata getSessionMetadata(String sessionId)
-        throws IOException {
+            throws IOException {
         SessionMetadata data = defaultResultStorage.readMetadata(sessionId);
         if (data == null) {
             return null;
@@ -111,8 +112,8 @@ public class SessionEntropyService {
     }
 
     public EntropyObject getEntropyForPerturbation(
-        String sessionId,
-        String pertubationId
+            String sessionId,
+            String pertubationId
     ) throws IOException {
         SessionEntropyData data = defaultResultStorage.readEntropy(sessionId);
         if (data == null) {
@@ -122,7 +123,7 @@ public class SessionEntropyService {
     }
 
     public EntropyObject getEntropyAtTime(String sessionId, int time)
-        throws IOException {
+            throws IOException {
         SessionEntropyData data = defaultResultStorage.readEntropy(sessionId);
         if (data == null) {
             return null;
@@ -130,21 +131,21 @@ public class SessionEntropyService {
 
         Map<EntropyLayer, double[]> sliced = new HashMap<>();
         for (Map.Entry<EntropyLayer, double[]> entry : data
-            .getSession_entropy()
-            .getLayerEntropies()
-            .entrySet()) {
+                .getSession_entropy()
+                .getLayerEntropies()
+                .entrySet()) {
             double[] values = entry.getValue();
             if (time < values.length) {
-                sliced.put(entry.getKey(), new double[] { values[time] });
+                sliced.put(entry.getKey(), new double[]{values[time]});
             }
         }
         return new EntropyObject(sliced);
     }
 
     public EntropyObject getEntropyInTimeRange(
-        String sessionId,
-        int from,
-        int to
+            String sessionId,
+            int from,
+            int to
     ) throws IOException {
         SessionEntropyData data = defaultResultStorage.readEntropy(sessionId);
         if (data == null) {
@@ -153,9 +154,9 @@ public class SessionEntropyService {
 
         Map<EntropyLayer, double[]> sliced = new HashMap<>();
         for (Map.Entry<EntropyLayer, double[]> entry : data
-            .getSession_entropy()
-            .getLayerEntropies()
-            .entrySet()) {
+                .getSession_entropy()
+                .getLayerEntropies()
+                .entrySet()) {
             double[] values = entry.getValue();
             int length = Math.min(to, values.length) - from;
             if (length > 0) {
@@ -203,19 +204,24 @@ public class SessionEntropyService {
         }
 
         DataSourceDAO dataSource = DataSourceFactory.createDataSource(
-            defaultConfig,
-            dataSourceType
-        );
-        DataParser parser = ParserFactory.createParser(dataSourceType);
-        ResultStorageDAO resultStorageDAO =
-            ResultStorageFactory.createResultStorage(
                 defaultConfig,
                 dataSourceType
-            );
+        );
+        DataParser parser = ParserFactory.createParser(dataSourceType);
+        ResultStorageDAO resultStorageDAO
+                = ResultStorageFactory.createResultStorage(
+                        defaultConfig,
+                        dataSourceType
+                );
 
         List<String> rawData = dataSource.readData(sessionID);
         // validateSessionComplete(sessionID, rawData);
         List<List<List<String>>> layers = parser.parseToSTTCLayers(rawData);
+        try {
+            LayerStateExporter.exportLayerStatesToCSV(layers, sessionID, "results");
+        } catch (IOException e) {
+            System.err.println("Failed to export layer states: " + e.getMessage());
+        }
         Map<String, String> traineeRoles = parser.getTraineeInfo(rawData);
         SessionMetadata sessionMetadata = parser.getSessionMetadata();
         String[][][] layerData = convertToArray(layers);
@@ -223,196 +229,196 @@ public class SessionEntropyService {
         Map<EntropyLayer, double[]> sessionEntropyMap = new HashMap<>();
 
         sessionEntropyMap.put(
-            EntropyLayer.COMMUNICATION,
-            GeneralizedEntropyCalculator.computeWindowedEntropy(
-                layerData,
-                4,
-                new LayerAggregationStrategy(0)
-            )
+                EntropyLayer.COMMUNICATION,
+                GeneralizedEntropyCalculator.computeWindowedEntropy(
+                        layerData,
+                        4,
+                        new LayerAggregationStrategy(0)
+                )
         );
         sessionEntropyMap.put(
-            EntropyLayer.VISUAL,
-            GeneralizedEntropyCalculator.computeWindowedEntropy(
-                layerData,
-                4,
-                new LayerAggregationStrategy(1)
-            )
+                EntropyLayer.VISUAL,
+                GeneralizedEntropyCalculator.computeWindowedEntropy(
+                        layerData,
+                        4,
+                        new LayerAggregationStrategy(1)
+                )
         );
         sessionEntropyMap.put(
-            EntropyLayer.CASUALTY,
-            GeneralizedEntropyCalculator.computeWindowedEntropy(
-                layerData,
-                4,
-                new LayerAggregationStrategy(2)
-            )
+                EntropyLayer.CASUALTY,
+                GeneralizedEntropyCalculator.computeWindowedEntropy(
+                        layerData,
+                        4,
+                        new LayerAggregationStrategy(2)
+                )
         );
         sessionEntropyMap.put(
-            EntropyLayer.MOVEMENT,
-            GeneralizedEntropyCalculator.computeWindowedEntropy(
-                layerData,
-                4,
-                new LayerAggregationStrategy(3)
-            )
+                EntropyLayer.MOVEMENT,
+                GeneralizedEntropyCalculator.computeWindowedEntropy(
+                        layerData,
+                        4,
+                        new LayerAggregationStrategy(3)
+                )
         );
 
         sessionEntropyMap.put(
-            EntropyLayer.TRAINEE1,
-            GeneralizedEntropyCalculator.computeWindowedEntropy(
-                layerData,
-                4,
-                new IndividualEntityAggregationStrategy(
-                    new int[] { 0, 1, 3 },
-                    0
+                EntropyLayer.TRAINEE1,
+                GeneralizedEntropyCalculator.computeWindowedEntropy(
+                        layerData,
+                        4,
+                        new IndividualEntityAggregationStrategy(
+                                new int[]{0, 1, 3},
+                                0
+                        )
                 )
-            )
         );
         sessionEntropyMap.put(
-            EntropyLayer.TRAINEE2,
-            GeneralizedEntropyCalculator.computeWindowedEntropy(
-                layerData,
-                4,
-                new IndividualEntityAggregationStrategy(
-                    new int[] { 0, 1, 3 },
-                    1
+                EntropyLayer.TRAINEE2,
+                GeneralizedEntropyCalculator.computeWindowedEntropy(
+                        layerData,
+                        4,
+                        new IndividualEntityAggregationStrategy(
+                                new int[]{0, 1, 3},
+                                1
+                        )
                 )
-            )
         );
         sessionEntropyMap.put(
-            EntropyLayer.TRAINEE3,
-            GeneralizedEntropyCalculator.computeWindowedEntropy(
-                layerData,
-                4,
-                new IndividualEntityAggregationStrategy(
-                    new int[] { 0, 1, 3 },
-                    2
+                EntropyLayer.TRAINEE3,
+                GeneralizedEntropyCalculator.computeWindowedEntropy(
+                        layerData,
+                        4,
+                        new IndividualEntityAggregationStrategy(
+                                new int[]{0, 1, 3},
+                                2
+                        )
                 )
-            )
         );
 
         sessionEntropyMap.put(
-            EntropyLayer.SYSTEM,
-            GeneralizedEntropyCalculator.computeWindowedEntropy(
-                layerData,
-                4,
-                new CombinedLayerAggregationStrategy(new int[] { 0, 1, 2, 3 })
-            )
+                EntropyLayer.SYSTEM,
+                GeneralizedEntropyCalculator.computeWindowedEntropy(
+                        layerData,
+                        4,
+                        new CombinedLayerAggregationStrategy(new int[]{0, 1, 2, 3})
+                )
         );
         sessionEntropyMap.put(
-            EntropyLayer.TEAM,
-            GeneralizedEntropyCalculator.computeWindowedEntropy(
-                layerData,
-                4,
-                new CombinedLayerAggregationStrategy(new int[] { 0, 3 })
-            )
+                EntropyLayer.TEAM,
+                GeneralizedEntropyCalculator.computeWindowedEntropy(
+                        layerData,
+                        4,
+                        new CombinedLayerAggregationStrategy(new int[]{0, 3})
+                )
         );
 
         Map<String, EntropyObject> scenarioEntropyMap = new HashMap<>();
         for (Map.Entry<String, Integer> scenario : sessionMetadata
-            .getScenarioIDs()
-            .entrySet()) {
+                .getScenarioIDs()
+                .entrySet()) {
             String scenarioId = scenario.getKey();
             int startIdx = scenario.getValue();
             int endIdx = determineEndIdx(
-                sessionMetadata.getScenarioIDs(),
-                scenarioId,
-                startIdx,
-                layerData.length
+                    sessionMetadata.getScenarioIDs(),
+                    scenarioId,
+                    startIdx,
+                    layerData.length
             );
 
             Map<EntropyLayer, double[]> scenarioLayers = new HashMap<>();
             String[][][] slicedData = sliceLayerData(
-                layerData,
-                startIdx,
-                endIdx
+                    layerData,
+                    startIdx,
+                    endIdx
             );
 
             scenarioLayers.put(
-                EntropyLayer.COMMUNICATION,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new LayerAggregationStrategy(0)
-                )
-            );
-            scenarioLayers.put(
-                EntropyLayer.VISUAL,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new LayerAggregationStrategy(1)
-                )
-            );
-            scenarioLayers.put(
-                EntropyLayer.CASUALTY,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new LayerAggregationStrategy(2)
-                )
-            );
-            scenarioLayers.put(
-                EntropyLayer.MOVEMENT,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new LayerAggregationStrategy(3)
-                )
-            );
-            scenarioLayers.put(
-                EntropyLayer.TRAINEE1,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new IndividualEntityAggregationStrategy(
-                        new int[] { 0, 1, 3 },
-                        0
+                    EntropyLayer.COMMUNICATION,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new LayerAggregationStrategy(0)
                     )
-                )
             );
             scenarioLayers.put(
-                EntropyLayer.TRAINEE2,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new IndividualEntityAggregationStrategy(
-                        new int[] { 0, 1, 3 },
-                        1
+                    EntropyLayer.VISUAL,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new LayerAggregationStrategy(1)
                     )
-                )
             );
             scenarioLayers.put(
-                EntropyLayer.TRAINEE3,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new IndividualEntityAggregationStrategy(
-                        new int[] { 0, 1, 3 },
-                        2
+                    EntropyLayer.CASUALTY,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new LayerAggregationStrategy(2)
                     )
-                )
             );
             scenarioLayers.put(
-                EntropyLayer.SYSTEM,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new CombinedLayerAggregationStrategy(
-                        new int[] { 0, 1, 2, 3 }
+                    EntropyLayer.MOVEMENT,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new LayerAggregationStrategy(3)
                     )
-                )
             );
             scenarioLayers.put(
-                EntropyLayer.TEAM,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new CombinedLayerAggregationStrategy(new int[] { 0, 3 })
-                )
+                    EntropyLayer.TRAINEE1,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new IndividualEntityAggregationStrategy(
+                                    new int[]{0, 1, 3},
+                                    0
+                            )
+                    )
+            );
+            scenarioLayers.put(
+                    EntropyLayer.TRAINEE2,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new IndividualEntityAggregationStrategy(
+                                    new int[]{0, 1, 3},
+                                    1
+                            )
+                    )
+            );
+            scenarioLayers.put(
+                    EntropyLayer.TRAINEE3,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new IndividualEntityAggregationStrategy(
+                                    new int[]{0, 1, 3},
+                                    2
+                            )
+                    )
+            );
+            scenarioLayers.put(
+                    EntropyLayer.SYSTEM,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new CombinedLayerAggregationStrategy(
+                                    new int[]{0, 1, 2, 3}
+                            )
+                    )
+            );
+            scenarioLayers.put(
+                    EntropyLayer.TEAM,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new CombinedLayerAggregationStrategy(new int[]{0, 3})
+                    )
             );
 
             scenarioEntropyMap.put(
-                scenarioId,
-                new EntropyObject(scenarioLayers)
+                    scenarioId,
+                    new EntropyObject(scenarioLayers)
             );
         }
 
@@ -425,98 +431,98 @@ public class SessionEntropyService {
             int endIdx = perturbation.getValue().get(1);
             Map<EntropyLayer, double[]> perturbationLayers = new HashMap<>();
             String[][][] slicedData = sliceLayerData(
-                layerData,
-                startIdx,
-                endIdx
+                    layerData,
+                    startIdx,
+                    endIdx
             );
 
             perturbationLayers.put(
-                EntropyLayer.COMMUNICATION,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new LayerAggregationStrategy(0)
-                )
-            );
-            perturbationLayers.put(
-                EntropyLayer.VISUAL,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new LayerAggregationStrategy(1)
-                )
-            );
-            perturbationLayers.put(
-                EntropyLayer.CASUALTY,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new LayerAggregationStrategy(2)
-                )
-            );
-            perturbationLayers.put(
-                EntropyLayer.MOVEMENT,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new LayerAggregationStrategy(3)
-                )
-            );
-            perturbationLayers.put(
-                EntropyLayer.TRAINEE1,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new IndividualEntityAggregationStrategy(
-                        new int[] { 0, 1, 3 },
-                        0
+                    EntropyLayer.COMMUNICATION,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new LayerAggregationStrategy(0)
                     )
-                )
             );
             perturbationLayers.put(
-                EntropyLayer.TRAINEE2,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new IndividualEntityAggregationStrategy(
-                        new int[] { 0, 1, 3 },
-                        1
+                    EntropyLayer.VISUAL,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new LayerAggregationStrategy(1)
                     )
-                )
             );
             perturbationLayers.put(
-                EntropyLayer.TRAINEE3,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new IndividualEntityAggregationStrategy(
-                        new int[] { 0, 1, 3 },
-                        2
+                    EntropyLayer.CASUALTY,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new LayerAggregationStrategy(2)
                     )
-                )
             );
             perturbationLayers.put(
-                EntropyLayer.SYSTEM,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new CombinedLayerAggregationStrategy(
-                        new int[] { 0, 1, 2, 3 }
+                    EntropyLayer.MOVEMENT,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new LayerAggregationStrategy(3)
                     )
-                )
             );
             perturbationLayers.put(
-                EntropyLayer.TEAM,
-                GeneralizedEntropyCalculator.computeWindowedEntropy(
-                    slicedData,
-                    4,
-                    new CombinedLayerAggregationStrategy(new int[] { 0, 3 })
-                )
+                    EntropyLayer.TRAINEE1,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new IndividualEntityAggregationStrategy(
+                                    new int[]{0, 1, 3},
+                                    0
+                            )
+                    )
+            );
+            perturbationLayers.put(
+                    EntropyLayer.TRAINEE2,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new IndividualEntityAggregationStrategy(
+                                    new int[]{0, 1, 3},
+                                    1
+                            )
+                    )
+            );
+            perturbationLayers.put(
+                    EntropyLayer.TRAINEE3,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new IndividualEntityAggregationStrategy(
+                                    new int[]{0, 1, 3},
+                                    2
+                            )
+                    )
+            );
+            perturbationLayers.put(
+                    EntropyLayer.SYSTEM,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new CombinedLayerAggregationStrategy(
+                                    new int[]{0, 1, 2, 3}
+                            )
+                    )
+            );
+            perturbationLayers.put(
+                    EntropyLayer.TEAM,
+                    GeneralizedEntropyCalculator.computeWindowedEntropy(
+                            slicedData,
+                            4,
+                            new CombinedLayerAggregationStrategy(new int[]{0, 3})
+                    )
             );
 
             perturbationEntropyMap.put(
-                perturbationId,
-                new EntropyObject(perturbationLayers)
+                    perturbationId,
+                    new EntropyObject(perturbationLayers)
             );
             DynamicsCalculator dynamicsFacade = new DynamicsCalculator();
             Map<String, List<Object>> teamDynamics =
@@ -533,10 +539,10 @@ public class SessionEntropyService {
         EntropyObject sessionEntropy = new EntropyObject(sessionEntropyMap);
 
         SessionEntropyData sessionEntropyData = new SessionEntropyData(
-            sessionID,
-            sessionEntropy,
-            scenarioEntropyMap,
-            perturbationEntropyMap
+                sessionID,
+                sessionEntropy,
+                scenarioEntropyMap,
+                perturbationEntropyMap
         );
         resultStorageDAO.writeEntropy(sessionEntropyData);
         resultStorageDAO.writeMetadata(sessionMetadata);
