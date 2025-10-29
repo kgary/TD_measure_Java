@@ -91,12 +91,24 @@ public class Main {
         );
         logger.info("Registered endpoint: /teamdynamics/*");
 
+        context.addServlet(
+            new ServletHolder(new StoreSessionidServlet(sessionEntropyService)),
+            "/bindSessions/*"
+        );
+        logger.info("Registered endpoint: /bindSessions/*");
+        context.addServlet(
+            new ServletHolder(new SessionsServlet(sessionEntropyService)),
+            "/sessions"
+        );
+
         server.start();
         logger.info("Server started successfully on port 8081");
         logger.info("Available endpoints:");
         logger.info("  - http://localhost:8081/entropy/*");
         logger.info("  - http://localhost:8081/session/*");
         logger.info("  - http://localhost:8081/teamdynamics/*");
+        logger.info("  - http://localhost:8081/bindSessions/*");
+        logger.info("  - http://localhost:8081/sessions/*");
 
         server.join();
     }

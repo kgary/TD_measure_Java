@@ -4,8 +4,8 @@ import java.util.*;
 
 public class EntropyProcessor {
 
-    public static Map<String, int[]> processEntropyData(double[][] entropyData) {
-        Map<String, int[]> results = new LinkedHashMap<>();
+    public static Map<String, Integer[]> processEntropyData(double[][] entropyData) {
+        Map<String, Integer[]> results = new LinkedHashMap<>();
 
         if (entropyData == null || entropyData.length == 0) {
             System.out.println("Processing entropy data for 0 time points. Returning empty results.");
@@ -29,10 +29,10 @@ public class EntropyProcessor {
             
             System.out.println("Processing entropy data for " + entropyData.length + " time points...\n");
             
-            int[] trainee1Results = LayeredDynamicRelaxationTimes.LayeredDynamicsRelaxationTimes(time1, time2, trainee1Entropy);
-            int[] trainee2Results = LayeredDynamicRelaxationTimes.LayeredDynamicsRelaxationTimes(time1, time2, trainee2Entropy);
-            int[] trainee3Results = LayeredDynamicRelaxationTimes.LayeredDynamicsRelaxationTimes(time1, time2, trainee3Entropy);
-            int[] teamResults = LayeredDynamicRelaxationTimes.LayeredDynamicsRelaxationTimes(time1, time2, teamEntropy);
+            Integer[] trainee1Results = LayeredDynamicRelaxationTimes.LayeredDynamicsRelaxationTimes(time1, time2, trainee1Entropy);
+            Integer[] trainee2Results = LayeredDynamicRelaxationTimes.LayeredDynamicsRelaxationTimes(time1, time2, trainee2Entropy);
+            Integer[] trainee3Results = LayeredDynamicRelaxationTimes.LayeredDynamicsRelaxationTimes(time1, time2, trainee3Entropy);
+            Integer[] teamResults = LayeredDynamicRelaxationTimes.LayeredDynamicsRelaxationTimes(time1, time2, teamEntropy);
             
             results.put("trainee1", trainee1Results);
             results.put("trainee2", trainee2Results);
@@ -53,7 +53,7 @@ public class EntropyProcessor {
         }
     }
     
-    private static String formatResult(int[] result) {
+    private static String formatResult(Integer[] result) {
         if (result == null) {
             return "Enaction=null, Adaptation=null, Recovery=null";
         }

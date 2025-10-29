@@ -118,6 +118,32 @@ public class FileResultStorageDAOImpl implements ResultStorageDAO {
     }
 
     @Override
+    public void storeSessionIds(
+        Integer giftSessionId,
+        String unitySessionId,
+        String scenarioId
+    ) throws IOException {
+        String idsFilePath = filePath.replace(".jsonl", "_sessionIDs.jsonl");
+        File file = new File(idsFilePath);
+
+        if (!file.exists()) {
+            file.getParentFile().mkdirs();
+            file.createNewFile();
+        }
+
+        Map<String, Object> sessionIdRecord = new LinkedHashMap<>();
+        sessionIdRecord.put("giftSessionId", giftSessionId);
+        sessionIdRecord.put("unitySessionId", unitySessionId);
+        sessionIdRecord.put("scenarioId", scenarioId);
+
+        String jsonLine = json.writeValueAsString(sessionIdRecord);
+
+        try (FileWriter writer = new FileWriter(file, true)) {
+            writer.write(jsonLine + "\n");
+        }
+    }
+
+    @Override
     public SessionEntropyData readEntropy(String sessionID) throws IOException {
         File file = new File(filePath);
         if (!file.exists()) {
@@ -177,5 +203,13 @@ public class FileResultStorageDAOImpl implements ResultStorageDAO {
                 scenarioID
         );
         return null;
+    }
+
+    @Override
+    public List<String> listAllSessions() throws IOException {
+        throw new UnsupportedOperationException(
+            "Listing all sessions is not supported for file-based storage. " +
+                "This operation is only available when using MongoDB storage."
+        );
     }
 }

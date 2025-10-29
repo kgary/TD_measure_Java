@@ -3,6 +3,7 @@ package service;
 import config.*;
 import dao.*;
 import entropy.*;
+import exception.*;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -167,8 +168,37 @@ public class SessionEntropyService {
         return new EntropyObject(sliced);
     }
 
+    private void validateSessionComplete(String sessionID, List<String> rawData)
+        throws IncompleteSessionException {
+        boolean foundApplicationStop = rawData
+            .stream()
+            .filter(line -> line.contains("\"scenarioEvent\":\"Application\""))
+            .anyMatch(line -> line.contains("\"event\":\"stop\""));
+
+        if (!foundApplicationStop) {
+            throw new IncompleteSessionException(
+                "Session " +
+                    sessionID +
+                    " is incomplete - missing Application stop event"
+            );
+        }
+    }
+
+    public Map<String, Object> listAllSessions() throws IOException {
+        List<String> sessionIDs = defaultResultStorage.listAllSessions();
+        Map<String, Object> response = new HashMap<>();
+        response.put("sessionIDs: ", sessionIDs);
+        response.put("totalCount", sessionIDs.size());
+        return response;
+    }
+
+    public void StoreSessionIds(Integer giftSessionId, String unitySessionId, String scenarioId)
+        throws IOException {
+        defaultResultStorage.storeSessionIds(giftSessionId, unitySessionId, scenarioId);
+    }
+
     public void CalculateEntropy(String sessionID, String dataSourceType)
-            throws IOException {
+        throws IOException, IncompleteSessionException {
         if (dataSourceType == null || dataSourceType.isEmpty()) {
             dataSourceType = defaultConfig.getDataSourceType();
         }
@@ -185,6 +215,7 @@ public class SessionEntropyService {
                 );
 
         List<String> rawData = dataSource.readData(sessionID);
+        // validateSessionComplete(sessionID, rawData);
         List<List<List<String>>> layers = parser.parseToSTTCLayers(rawData);
         try {
             LayerStateExporter.exportLayerStatesToCSV(layers, sessionID, "results");
@@ -389,32 +420,15 @@ public class SessionEntropyService {
                     scenarioId,
                     new EntropyObject(scenarioLayers)
             );
-
-            DynamicsCalculator dynamicsFacade = new DynamicsCalculator();
-            Map<String, List<Object>> teamDynamics
-                    = dynamicsFacade.calculateDynamics(scenarioLayers, layers);
-            Map<String, List<Object>> roleMappedDynamics
-                    = dynamicsFacade.replaceTraineeKeys(teamDynamics, traineeRoles);
-            resultStorageDAO.writeTeamDynamics(
-                    sessionID,
-                    scenarioId,
-                    roleMappedDynamics
-            );
         }
 
         Map<String, EntropyObject> perturbationEntropyMap = new HashMap<>();
-        for (Map.Entry<String, Integer> perturbation : sessionMetadata
-                .getPertubationIDs()
-                .entrySet()) {
+        for (Map.Entry<String, List<Integer>> perturbation : sessionMetadata
+            .getPertubationIDs()
+            .entrySet()) {
             String perturbationId = perturbation.getKey();
-            int startIdx = perturbation.getValue();
-            int endIdx = determineEndIdx(
-                    sessionMetadata.getPertubationIDs(),
-                    perturbationId,
-                    startIdx,
-                    layerData.length
-            );
-
+            int startIdx = perturbation.getValue().get(0);
+            int endIdx = perturbation.getValue().get(1);
             Map<EntropyLayer, double[]> perturbationLayers = new HashMap<>();
             String[][][] slicedData = sliceLayerData(
                     layerData,
@@ -509,6 +523,16 @@ public class SessionEntropyService {
             perturbationEntropyMap.put(
                     perturbationId,
                     new EntropyObject(perturbationLayers)
+            );
+            DynamicsCalculator dynamicsFacade = new DynamicsCalculator();
+            Map<String, List<Object>> teamDynamics =
+                dynamicsFacade.calculateDynamics(perturbationLayers, layers);
+            Map<String, List<Object>> roleMappedDynamics =
+                dynamicsFacade.replaceTraineeKeys(teamDynamics, traineeRoles);
+            resultStorageDAO.writeTeamDynamics(
+                sessionID,
+                perturbationId,
+                roleMappedDynamics
             );
         }
 
