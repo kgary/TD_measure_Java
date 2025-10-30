@@ -28,7 +28,8 @@ public interface ResultStorageDAO {
 
     public Map<String, List<Object>> readTeamDynamics(
         String sessionID,
-        String scenarioID
+        String scenarioID,
+        String pertubationID
     ) throws IOException;
     public List<String> listAllSessions() throws IOException;
 }

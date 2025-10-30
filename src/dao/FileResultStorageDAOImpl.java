@@ -187,7 +187,8 @@ public class FileResultStorageDAOImpl implements ResultStorageDAO {
     @Override
     public Map<String, List<Object>> readTeamDynamics(
         String sessionID,
-        String scenarioID
+        String scenarioID,
+        String pertubationID
     ) throws IOException {
         String dynamicsFilePath = filePath.replace(".jsonl", "_dynamics.jsonl");
         File file = new File(dynamicsFilePath);

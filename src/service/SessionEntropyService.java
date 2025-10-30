@@ -83,14 +83,9 @@ public class SessionEntropyService {
     public Map<String, List<Object>> getScenarioTeamDynamics(
             String sessionId,
             String scenarioId,
-            String dataSourceType
+            String pertubationId
     ) throws IOException {
-        ResultStorageDAO resultStorageDAO
-                = ResultStorageFactory.createResultStorage(
-                        defaultConfig,
-                        dataSourceType
-                );
-        return resultStorageDAO.readTeamDynamics(sessionId, scenarioId);
+        return defaultResultStorage.readTeamDynamics(sessionId, scenarioId, pertubationId);
     }
 
     public EntropyObject getEntropyForScenario(
@@ -595,8 +590,11 @@ public class SessionEntropyService {
             Map<String, List<Object>> roleMappedDynamics
                     = dynamicsFacade.replaceTraineeKeys(teamDynamics, traineeRoles);
 
+            int pertubationID_temp = Integer.parseInt(perturbationId) - 1;
+            String perturbationId_temp1 = Integer.toString(pertubationID_temp);
+
             Map<String, ?> existingDynamics
-                    = (Map<String, ?>) resultStorageDAO.readTeamDynamics(sessionID, scenarioID);        
+                    = (Map<String, ?>) resultStorageDAO.readTeamDynamics(sessionID, scenarioID, perturbationId_temp1);        
 
             if (existingDynamics != null && !existingDynamics.isEmpty()) {
                 resultStorageDAO.writeTeamDynamics(

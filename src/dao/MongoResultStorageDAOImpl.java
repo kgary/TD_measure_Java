@@ -335,7 +335,7 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
                         + sessionID
                         + ", Scenario ID: "
                         + scenarioID
-                        + ", Pertubation ID: "
+                        + ", Perturbation ID: "
                         + pertubationID
                 );
                 return;
@@ -365,7 +365,7 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
             Map<String, Object> record = new java.util.LinkedHashMap<>();
             record.put("sessionID", sessionID);
             record.put("scenarioID", scenarioID);
-            record.put("pertubationID", pertubationID);
+            record.put("perturbationID", pertubationID);
             record.put("teamDynamics", labeledDynamics);
 
             String jsonString = json.writeValueAsString(record);
@@ -494,17 +494,24 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
     @Override
     public Map<String, List<Object>> readTeamDynamics(
             String sessionID,
-            String scenarioID
+            String scenarioID,
+            String pertubationID
     ) throws IOException {
         String collectionName = mongoCollection + DYNAMICS_COLLECTION_SUFFIX;
+        Document query = new Document("sessionID", sessionID).append(
+                    "scenarioID",
+                    scenarioID
+            );
         try {
             MongoCollection<Document> collection = getCollection(
                     DYNAMICS_COLLECTION_SUFFIX
             );
-            Document query = new Document("sessionID", sessionID).append(
-                    "scenarioID",
-                    scenarioID
-            );
+            if (("scenario_2".equals(scenarioID)) &&  ( pertubationID == null || pertubationID.isEmpty() || "".equals(pertubationID)) ) {
+                query.append("perturbationID", "averaged");
+            }
+            if ( pertubationID != null && !pertubationID.isEmpty() && ( !"".equals(pertubationID))) {
+                query.append("perturbationID", pertubationID);
+            }
             Document result = collection.find(query).first();
 
             if (result != null) {
