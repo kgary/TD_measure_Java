@@ -6,6 +6,7 @@ import entropy.*;
 import exception.*;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -220,6 +221,41 @@ public class SessionEntropyService {
             }
         }
         defaultResultStorage.storeSessionIds(giftSessionIds, unitySessionId, scenarioIds);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Object> normalizeToList(Object raw) {
+        if (raw == null) {
+            return new ArrayList<>();
+        }
+
+        if (raw instanceof List<?>) {
+            return new ArrayList<>((List<Object>) raw);
+        }
+
+        if (raw instanceof Map<?, ?>) {
+            return new ArrayList<>(((Map<?, ?>) raw).values());
+        }
+        return new ArrayList<>(Collections.singletonList(raw));
+    }
+
+    private static List<Object> calculateAverage(List<Object> list1, List<Object> list2) {
+        List<Object> averagedList = new ArrayList<>();
+        int size = Math.min(list1.size(), list2.size());
+
+        for (int i = 0; i < size; i++) {
+            Object obj1 = list1.get(i);
+            Object obj2 = list2.get(i);
+
+            if (obj1 instanceof Number && obj2 instanceof Number) {
+                double avg = (((Number) obj1).doubleValue() + ((Number) obj2).doubleValue()) / 2.0;
+                averagedList.add(avg);
+            } else {
+                averagedList.add(obj1);
+            }
+        }
+
+        return averagedList;
     }
 
     public void CalculateEntropy(String sessionID, String dataSourceType)
@@ -451,7 +487,10 @@ public class SessionEntropyService {
         for (Map.Entry<String, List<Integer>> perturbation : sessionMetadata
                 .getPertubationIDs()
                 .entrySet()) {
-            String perturbationId = perturbation.getKey();
+            String perturbationId_temp = perturbation.getKey();
+            String[] parts = perturbationId_temp.split("split");
+            String scenarioID = parts[0];
+            String perturbationId = parts[1];
             int startIdx = perturbation.getValue().get(0);
             int endIdx = perturbation.getValue().get(1);
             Map<EntropyLayer, double[]> perturbationLayers = new HashMap<>();
@@ -549,13 +588,39 @@ public class SessionEntropyService {
                     perturbationId,
                     new EntropyObject(perturbationLayers)
             );
+
             DynamicsCalculator dynamicsFacade = new DynamicsCalculator();
             Map<String, List<Object>> teamDynamics
                     = dynamicsFacade.calculateDynamics(perturbationLayers, layers);
             Map<String, List<Object>> roleMappedDynamics
                     = dynamicsFacade.replaceTraineeKeys(teamDynamics, traineeRoles);
+
+            Map<String, ?> existingDynamics
+                    = (Map<String, ?>) resultStorageDAO.readTeamDynamics(sessionID, scenarioID);        
+
+            if (existingDynamics != null && !existingDynamics.isEmpty()) {
+                resultStorageDAO.writeTeamDynamics(
+                        sessionID,
+                        scenarioID,
+                        perturbationId,
+                        roleMappedDynamics
+                );
+                for (Map.Entry<String, ?> entry : existingDynamics.entrySet()) {
+                    String key = entry.getKey();
+                    Object rawExistingValue = entry.getValue();
+                    if (rawExistingValue != null && !(rawExistingValue instanceof List<?>)) {
+                        List<Object> existingList = normalizeToList(rawExistingValue);
+                        List<Object> currentList = normalizeToList(roleMappedDynamics.get(key));
+                        List<Object> newList = new ArrayList<>();
+                        newList = calculateAverage(existingList, currentList);
+                        roleMappedDynamics.put(key, newList);
+                    }
+                   perturbationId = "averaged";
+                }
+            }
             resultStorageDAO.writeTeamDynamics(
                     sessionID,
+                    scenarioID,
                     perturbationId,
                     roleMappedDynamics
             );
