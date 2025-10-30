@@ -307,6 +307,7 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
     public void writeTeamDynamics(
             String sessionID,
             String scenarioID,
+            String pertubationID,
             Map<String, List<Object>> teamDynamics
     ) throws IOException {
         String collectionName = mongoCollection + DYNAMICS_COLLECTION_SUFFIX;
@@ -324,7 +325,8 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
             Document existingQuery = new Document(
                     "sessionID",
                     sessionID
-            ).append("scenarioID", scenarioID);
+            ).append("scenarioID", scenarioID).append("pertubationID", pertubationID);
+
             Document existingRecord = collection.find(existingQuery).first();
 
             if (existingRecord != null) {
@@ -333,6 +335,8 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
                         + sessionID
                         + ", Scenario ID: "
                         + scenarioID
+                        + ", Pertubation ID: "
+                        + pertubationID
                 );
                 return;
             }
@@ -361,6 +365,7 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
             Map<String, Object> record = new java.util.LinkedHashMap<>();
             record.put("sessionID", sessionID);
             record.put("scenarioID", scenarioID);
+            record.put("pertubationID", pertubationID);
             record.put("teamDynamics", labeledDynamics);
 
             String jsonString = json.writeValueAsString(record);
@@ -372,6 +377,8 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
                     + collectionName
                     + " (New record for Scenario ID: "
                     + scenarioID
+                    + ", Pertubation ID: "
+                    + pertubationID
                     + ")"
             );
 
@@ -490,7 +497,6 @@ public class MongoResultStorageDAOImpl implements ResultStorageDAO {
             String scenarioID
     ) throws IOException {
         String collectionName = mongoCollection + DYNAMICS_COLLECTION_SUFFIX;
-
         try {
             MongoCollection<Document> collection = getCollection(
                     DYNAMICS_COLLECTION_SUFFIX

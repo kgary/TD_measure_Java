@@ -53,9 +53,9 @@ public class FileResultStorageDAOImpl implements ResultStorageDAO {
     public void writeTeamDynamics(
         String sessionID,
         String scenarioID,
+        String perturbationId,
         Map<String, List<Object>> teamDynamicsMap
     ) throws IOException {
-        // Define the target file path
         String dynamicsFilePath = filePath.replace(".jsonl", "_dynamics.jsonl");
         File file = new File(dynamicsFilePath);
 
@@ -64,7 +64,6 @@ public class FileResultStorageDAOImpl implements ResultStorageDAO {
             file.createNewFile();
         }
 
-        // The labels that define the order in the input List<Object>
         final String[] METRIC_LABELS = {
             "Enaction",
             "Adaptation",
@@ -72,11 +71,9 @@ public class FileResultStorageDAOImpl implements ResultStorageDAO {
             "Influence",
         };
 
-        // Map to hold the final labeled metrics for all subjects (Trainees + Team)
         Map<String, Map<String, Object>> labeledDynamics =
             new LinkedHashMap<>();
 
-        // 1. Iterate over subjects (e.g., "Medsupplier", "team")
         for (Map.Entry<
             String,
             List<Object>
@@ -86,28 +83,25 @@ public class FileResultStorageDAOImpl implements ResultStorageDAO {
 
             Map<String, Object> subjectMetrics = new LinkedHashMap<>();
 
-            // 2. Map the raw values to their corresponding labels
             if (rawMetrics.size() == METRIC_LABELS.length) {
                 for (int i = 0; i < METRIC_LABELS.length; i++) {
                     subjectMetrics.put(METRIC_LABELS[i], rawMetrics.get(i));
                 }
             } else {
-                // Fallback for unexpected size
                 subjectMetrics.put("Raw_Data", rawMetrics);
             }
 
             labeledDynamics.put(subjectKey, subjectMetrics);
         }
 
-        // 3. Create the final top-level record, ensuring sessionID comes first
         Map<String, Object> record = new LinkedHashMap<>();
         record.put("sessionID", sessionID);
         record.put("scenarioID", scenarioID);
-        record.put("teamDynamics", labeledDynamics); // Store the newly labeled structure
+        record.put("perturbationId", perturbationId);
+        record.put("teamDynamics", labeledDynamics); 
 
         String jsonLine = json.writeValueAsString(record);
 
-        // 4. Write the labeled record to the file
         try (FileWriter writer = new FileWriter(file, true)) {
             writer.write(jsonLine + "\n");
         }

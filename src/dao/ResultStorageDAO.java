@@ -22,6 +22,7 @@ public interface ResultStorageDAO {
     public void writeTeamDynamics(
         String sessionID,
         String scenarioID,
+        String pertubationID,
         Map<String, List<Object>> teamDynamics
     ) throws IOException;
 
