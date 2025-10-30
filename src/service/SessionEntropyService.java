@@ -171,8 +171,8 @@ public class SessionEntropyService {
         throws IncompleteSessionException {
         boolean foundApplicationStop = rawData
             .stream()
-            .filter(line -> line.contains("\"scenarioEvent\":\"Application\""))
-            .anyMatch(line -> line.contains("\"event\":\"stop\""));
+            .filter(line -> line.contains("\"scenarioEvent\": \"Application\""))
+            .anyMatch(line -> line.contains("\"event\": \"stop\""));
 
         if (!foundApplicationStop) {
             throw new IncompleteSessionException(
