@@ -13,7 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.*;
 
-@WebServlet(urlPatterns = { "/session/*" })
+@WebServlet(urlPatterns = { "/sessions/*" })
 public class SessionsServlet extends HttpServlet {
 
     private static final Logger logger = LoggerFactory.getLogger(
@@ -36,7 +36,39 @@ public class SessionsServlet extends HttpServlet {
     @Override
     public void doGet(HttpServletRequest req, HttpServletResponse resp)
         throws ServletException, IOException {
+        String pathInfo = req.getPathInfo();
+
+        if (pathInfo == null || pathInfo.equals("/")) {
+            handleListSessions(req, resp);
+        }
+        String[] parts = pathInfo.substring(1).split("/");
+        String sessionId = parts[0];
+
+        if (parts.length == 1) {
+            // return session metadata
+        } else if (parts.length == 2 && "entropy".equals(parts[1])) {
+            // return session entropy
+        } else if (
+            parts.length == 4 &&
+            "scenarios".equals(parts[1]) &&
+            "entropy".equals(parts[3])
+        ) {
+            // return scenario entropy
+        } else if (
+            parts.length == 4 &&
+            "perturbations".equals(parts[1]) &&
+            "entropy".equals(parts[3])
+        ) {
+            // return perturbation entropy
+        }
+    }
+
+    public void handleListSessions(
+        HttpServletRequest req,
+        HttpServletResponse resp
+    ) throws IOException {
         logger.debug("GET /sessions - Fetching all sessions");
+
         try {
             Map<String, Object> result =
                 sessionEntropyService.listAllSessions();

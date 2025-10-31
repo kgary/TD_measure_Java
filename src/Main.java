@@ -98,7 +98,7 @@ public class Main {
         logger.info("Registered endpoint: /bindSessions/*");
         context.addServlet(
             new ServletHolder(new SessionsServlet(sessionEntropyService)),
-            "/sessions"
+            "/sessions/*"
         );
 
         server.start();
