@@ -45,10 +45,10 @@ public class StoreSessionidServlet extends HttpServlet {
             Object scenarioObj = body.get("scenarioId");
 
             if (giftObj == null || unityObj == null || scenarioObj == null) {
-                logger.warn("POST /storesession - missing required fields");
+                logger.warn("POST /bindSessions - missing required fields");
                 resp.setStatus(400);
                 sendJsonError(resp, Map.of(
-                    "error", "giftSessionId (int) and unitySessionId (string) are required"
+                    "error", "All Fields are required"
                 ));
                 return;
             }
@@ -65,10 +65,10 @@ public class StoreSessionidServlet extends HttpServlet {
 
             String unitySessionId = (unityObj instanceof String) ? (String) unityObj : null;
             if (unitySessionId == null || unitySessionId.isBlank()) {
-                logger.warn("POST /storesession - invalid types or empty values");
+                logger.warn("POST /bindSessions - invalid types or empty values");
                 resp.setStatus(400);
                 sendJsonError(resp, Map.of(
-                    "error", "Invalid payload: giftSessionId must be an integer; unitySessionId must be a non-empty string"
+                    "error", "Invalid payload: unitySessionId is empty"
                 ));
                 return;
             }
@@ -80,15 +80,15 @@ public class StoreSessionidServlet extends HttpServlet {
 
             String scenarioID = (scenarioObj instanceof String) ? (String) scenarioObj : null;
             if (scenarioID == null || scenarioID.isBlank()) {
-                logger.warn("POST /storesession - invalid scenarioId");
+                logger.warn("POST /bindSessions - invalid scenarioId");
                 resp.setStatus(400);
                 sendJsonError(resp, Map.of(
-                    "error", "Invalid payload: scenarioId must be a non-empty string"
+                    "error", "Invalid payload: scenarioId is empty"
                 ));
                 return;
             }
 
-            // sessionEntropyService.StoreSessionIds(giftSessionId, unitySessionId);
+            sessionEntropyService.storeSessionIds(giftSessionId, unitySessionId, scenarioID);
 
             resp.setStatus(201);
             sendJsonResponse(resp, Map.of(
@@ -99,7 +99,7 @@ public class StoreSessionidServlet extends HttpServlet {
                 "scenarioId", scenarioID
             ));
         } catch (Exception e) {
-            logger.error("Error in POST /storesession: {}", e.getMessage(), e);
+            logger.error("Error in POST /bindSessions: {}", e.getMessage(), e);
             resp.setStatus(500);
             sendJsonError(resp, Map.of("error", "Server error: " + e.getMessage()));
         }

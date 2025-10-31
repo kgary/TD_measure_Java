@@ -4,7 +4,7 @@ import java.util.*;
 
 public class InfluenceProcessor {
 
-    public static Map<String, Double> processCommunicationData(int[][] communicationData) {
+    public static Map<String, Double> processCommunicationData(Integer[][] communicationData) {
         
         Map<String, Double> results = new LinkedHashMap<>();
 

@@ -1,12 +1,10 @@
 package teamDynamics;
 
-import java.util.List;
-import java.util.Map;
-
-import model.*;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import model.*;
 
 public class DynamicsCalculator {
 
@@ -34,15 +32,15 @@ public class DynamicsCalculator {
         return dataMatrix;
     }
 
-    private List<int[]> prepareCommunicationMatrix(List<List<List<String>>> layers) {
-        List<int[]> communicationMatrix = new ArrayList<>();
-        int commLayerIndex = 0;
+    private List<Integer[]> prepareCommunicationMatrix(List<List<List<String>>> layers) {
+        List<Integer[]> communicationMatrix = new ArrayList<>();
+        Integer commLayerIndex = 0;
 
         for (List<List<String>> timeInstance : layers) {
             List<String> commCodes = timeInstance.get(commLayerIndex);
 
             if (commCodes.size() >= 3) {
-                int[] codes = new int[commCodes.size()];
+                Integer[] codes = new Integer[commCodes.size()];
 
                 try {
                     for (int i = 0; i < commCodes.size(); i++) {
@@ -79,18 +77,18 @@ public class DynamicsCalculator {
     }
 
     private static Map<String, List<Object>> combineFinalResults(
-            Map<String, int[]> Concepts,
+            Map<String, Integer[]> Concepts,
             Map<String, Double> Influence
     ) {
         Map<String, List<Object>> finalResults = new LinkedHashMap<>();
 
-        for (Map.Entry<String, int[]> conceptEntry : Concepts.entrySet()) {
+        for (Map.Entry<String, Integer[]> conceptEntry : Concepts.entrySet()) {
             String subject = conceptEntry.getKey();
-            int[] conceptValues = conceptEntry.getValue();
+            Integer[] conceptValues = conceptEntry.getValue();
             List<Object> metrics = new ArrayList<>();
 
             if (conceptValues != null) {
-                for (int val : conceptValues) {
+                for (Integer val : conceptValues) {
                     metrics.add(val);
                 }
             } else {
@@ -111,16 +109,20 @@ public class DynamicsCalculator {
     }
 
     public Map<String, List<Object>> calculateDynamics(Map<EntropyLayer, double[]> sessionEntropyMap,
-            List<List<List<String>>> layers) {
-
-        double[][] entropyMatrix = prepareEntropyMatrix(sessionEntropyMap);
-        Map<String, int[]> Concepts = EntropyProcessor.processEntropyData(entropyMatrix);
-
-        List<int[]> commListMatrix = prepareCommunicationMatrix(layers);
-        int[][] communicationData = commListMatrix.toArray(new int[0][]);
+            List<List<List<String>>> layers) {      
+        
+                double[][] entropyMatrix = prepareEntropyMatrix(sessionEntropyMap);
+        
+        Map<String, Integer[]> Concepts = EntropyProcessor.processEntropyData(entropyMatrix);
+        
+        List<Integer[]> commListMatrix = prepareCommunicationMatrix(layers);
+        
+        Integer[][] communicationData = commListMatrix.toArray(new Integer[0][]);
+        
         Map<String, Double> Influence = InfluenceProcessor.processCommunicationData(communicationData);
-
+        
         Map<String, List<Object>> finalResults = combineFinalResults(Concepts, Influence);
+        
 
         return finalResults;
 

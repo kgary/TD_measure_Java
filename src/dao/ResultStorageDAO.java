@@ -11,18 +11,25 @@ public interface ResultStorageDAO {
 
     public void writeMetadata(SessionMetadata sessionMetadata)
         throws IOException;
+    
+    public void storeSessionIds(List<Integer> giftSessionIds, String unitySessionId, List<String> scenarioIds)
+        throws IOException;
+        
     public SessionEntropyData readEntropy(String sessionID) throws IOException;
     public SessionMetadata readMetadata(String sessionID) throws IOException;
+    public Map<String, List<Object>> readSessionIds(String unitySessionId) throws IOException;
 
     public void writeTeamDynamics(
         String sessionID,
         String scenarioID,
+        String pertubationID,
         Map<String, List<Object>> teamDynamics
     ) throws IOException;
 
     public Map<String, List<Object>> readTeamDynamics(
         String sessionID,
-        String scenarioID
+        String scenarioID,
+        String pertubationID
     ) throws IOException;
     public List<String> listAllSessions() throws IOException;
 }

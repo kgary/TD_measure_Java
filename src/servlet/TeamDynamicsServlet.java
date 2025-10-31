@@ -37,11 +37,7 @@ public class TeamDynamicsServlet extends HttpServlet {
 
         String sessionId = request.getParameter("sessionId");
         String scenarioId = request.getParameter("scenarioId");
-        String dataSourceType = request.getParameter("dataSourceType");
-
-        String resolvedDataSourceType = (dataSourceType != null && !dataSourceType.trim().isEmpty())
-                ? dataSourceType 
-                : "mongo";        
+        String pertubationId = request.getParameter("perturbationId");    
 
         if (sessionId == null || sessionId.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -56,7 +52,7 @@ public class TeamDynamicsServlet extends HttpServlet {
         try {
             System.out.println("GET /teamdynamics - sessionId: " + sessionId + ", scenarioId: " + scenarioId);
 
-            Map<String, List<Object>> teamDynamics = service.getScenarioTeamDynamics(sessionId, scenarioId, resolvedDataSourceType);
+            Map<String, List<Object>> teamDynamics = service.getScenarioTeamDynamics(sessionId, scenarioId, pertubationId);
 
             if (teamDynamics == null || teamDynamics.isEmpty()) {
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND);
