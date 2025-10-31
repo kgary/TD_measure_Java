@@ -45,7 +45,7 @@ public class SessionsServlet extends HttpServlet {
         String sessionId = parts[0];
 
         if (parts.length == 1) {
-            // return session metadata
+            handleGetSession(sessionId, req, resp);
         } else if (parts.length == 2 && "entropy".equals(parts[1])) {
             // return session entropy
         } else if (
@@ -89,6 +89,42 @@ public class SessionsServlet extends HttpServlet {
             );
         } catch (Exception e) {
             logger.error("Error fetching sessions list: {}", e.getMessage(), e);
+            resp.setStatus(500);
+            sendJsonError(resp, "Server error: " + e.getMessage());
+        }
+    }
+
+    private void handleGetSession(
+        String sessionId,
+        HttpServletRequest req,
+        HttpServletResponse resp
+    ) throws IOException {
+        logger.debug("GET /sessions/{} - Fetching session metadata", sessionId);
+        try {
+            Object result = sessionEntropyService.getSessionMetadata(sessionId);
+
+            if (result == null) {
+                logger.warn(
+                    "Session metadata not found: sessionId={}",
+                    sessionId
+                );
+                resp.setStatus(404);
+                sendJsonError(resp, "Session not found");
+                return;
+            }
+
+            logger.info(
+                "Successfully retrieved metadata for sessionId={}",
+                sessionId
+            );
+            sendJsonResponse(resp, result);
+        } catch (Exception e) {
+            logger.error(
+                "Error fetching metadata for sessionId={}: {}",
+                sessionId,
+                e.getMessage(),
+                e
+            );
             resp.setStatus(500);
             sendJsonError(resp, "Server error: " + e.getMessage());
         }
