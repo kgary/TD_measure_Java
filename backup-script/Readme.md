@@ -170,7 +170,7 @@ You can now copy the backup file to your pendrive.
 
 1. Go to your backup destination folder
 2. Find the ZIP file: `GIFT_backup_2025-10-29_12-33-48.zip`
-3. Copy it to your pendrive or external storage/ update the `backup.destination.dir` to the file location of pendrive 
+3. Copy it to your pendrive or external storage or update the `backup.destination.dir` to the file location of pendrive->this would directly create the backup in the external drive
 4. Keep multiple backups in different locations for safety!
 
 ## Troubleshooting
