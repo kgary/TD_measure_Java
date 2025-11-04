@@ -1,0 +1,259 @@
+openapi: 3.0.4
+info:
+  title: Team Dynamics Entropy Service
+  description: |-
+    API to calculate and fetch entropy of a VR session
+  version: 0.0.1
+paths:
+  /entropy:
+    parameters:
+      - name: sessionId
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: scenarioId
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: pertubationId
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: time
+        in: query
+        required: false
+        schema:
+          type: integer
+    get:
+      tags:
+        - entropy
+      summary: |
+        Fetch entropy for an entire session
+
+      description: |
+        Valid parameter combinations:
+        - sessionId (entire session)
+        - sessionId + scenarioId (scenario within session)
+        - sessionId + from + to (time window)
+        - sessionId + time (specific timestamp)
+        - sessionId + pertubationId (specific perturbation)
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntropyObject"
+        "400":
+          description: |
+            - Invalid session ID supplied
+            - Missing session ID
+        "404":
+          description: session ID not found
+        "500":
+          description: Server Error
+
+  /session:
+    get:
+      tags:
+        - metadata
+      summary: Returns session metadata.
+      parameters:
+        - name: sessionId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          description: Invalid sessionId
+    post:
+      summary: begin entropy caclulation on file
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          description: Invalid sessionId
+
+  /sessions:
+    get:
+      tags:
+        - metadata
+      summary: List all sessions
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sessions"
+        "500":
+          description: server error
+  
+  /teamdynamics:
+    get:
+      tags:
+        - dynamics
+      summary: Fetch team dynamics for a specific scenario within a session
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: scenarioId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: dataSourceType
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Data source type (e.g., "mongo", "file"). Defaults to "mongo" if not provided.
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: object
+        "400":
+          description: |
+            - Invalid session ID supplied
+            - Missing session ID or scenario ID
+        "404":
+          description: session ID or scenario ID not found
+        "500":
+          description: server error
+
+components:
+  schemas:
+    EntropyObject:
+      type: object
+      properties:
+        entropy:
+          $ref: "#/components/schemas/EntropyData"
+        lastCalculated:
+          type: string
+          format: date-time
+        sessionId:
+          type: string
+        scenarioEntropy:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/EntropyData"
+          description: Map of scenario IDs to their entropy data
+        pertubationEntropy:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/EntropyData"
+          description: Map of pertubation IDs to their entropy data
+        from:
+          type: integer
+        to:
+          type: integer
+        time:
+          type: integer
+      required:
+        - entropy
+        - lastCalculated
+
+    EntropyData:
+      type: object
+      properties:
+        visual_layer:
+          type: array
+          items:
+            type: number
+        communication_layer:
+          type: array
+          items:
+            type: number
+        casualty_layer:
+          type: array
+          items:
+            type: number
+        movement_layer:
+          type: array
+          items:
+            type: number
+        trainee1:
+          type: array
+          items:
+            type: number
+        trainee2:
+          type: array
+          items:
+            type: number
+        trainee3:
+          type: array
+          items:
+            type: number
+        system_layer:
+          type: array
+          items:
+            type: number
+        team_layer:
+          type: array
+          items:
+            type: number
+
+    Sessions:
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            type: integer
+
+    Session:
+      type: object
+      properties:
+        sessionId:
+          type: integer
+        scenarios:
+          type: array
+          items:
+            type: integer
+        perturbations:
+          type: array
+          items:
+            type: integer
+        totalTime:
+          type: integer
+        trainees:
+          type: array
+          items:
+            type: number
+        createdAt:
+          type: string
+          format: date-time

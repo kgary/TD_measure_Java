@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="STTC-Entropy" default="compile" basedir=".">
+
+    <!-- Properties -->
+    <property name="src.dir" value="src"/>
+    <property name="resources.dir" value="resources"/>
+    <property name="build.dir" value="build"/>
+    <property name="classes.dir" value="${build.dir}/classes"/>
+    <property name="lib.dir" value="lib"/>
+    <!-- Create directories -->
+    <target name="init">
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${classes.dir}"/>
+        <mkdir dir="${lib.dir}"/>
+    </target>
+
+    <!-- Clean -->
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <!-- Compile -->
+    <target name="compile" depends="init">
+        <javac srcdir="${src.dir}" destdir="${classes.dir}" includeantruntime="false">
+            <classpath>
+                <fileset dir="${lib.dir}">
+                    <include name="*.jar"/>
+                </fileset>
+            </classpath>
+        </javac>
+
+        <copy todir="${classes.dir}">
+            <fileset dir="${resources.dir}"/>
+        </copy>
+    </target>
+
+    <!-- Run -->
+    <target name="run" depends="compile">
+        <java classname="Main" fork="true">
+            <classpath>
+                <pathelement path="${classes.dir}"/>
+                <fileset dir="${lib.dir}">
+                    <include name="*.jar"/>
+                </fileset>
+            </classpath>
+        </java>
+    </target>
+
+    <!-- Run with specific data source -->
+    <target name="run-file" depends="compile">
+        <java classname="Main" fork="true">
+            <classpath>
+                <pathelement path="${classes.dir}"/>
+                <fileset dir="${lib.dir}">
+                    <include name="*.jar"/>
+                </fileset>
+            </classpath>
+            <sysproperty key="data.source.type" value="file"/>
+        </java>
+    </target>
+
+    <!-- Force rebuild and run -->
+    <target name="rebuild-run" depends="clean, run">
+        <echo message="Forced rebuild and run completed"/>
+    </target>
+
+</project>
