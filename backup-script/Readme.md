@@ -261,11 +261,5 @@ If you encounter issues:
 - **Compression:** Maximum compression (level 9)
 - **Output:** Single timestamped ZIP file with README
 
-## License & Usage
-
-This script is provided as-is for backing up GIFT project data. Feel free to modify it to suit your needs.
-
----
-
 **Last Updated:** November 04, 2025
 **Version:** 1.0
