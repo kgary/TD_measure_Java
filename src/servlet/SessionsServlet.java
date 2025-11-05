@@ -54,13 +54,15 @@ public class SessionsServlet extends HttpServlet {
             "scenarios".equals(parts[1]) &&
             "entropy".equals(parts[3])
         ) {
-            handleScenarioEntropy(sessionId, parts[2], req, resp);
+            String scenarioId = parts[2];
+            handleScenarioEntropy(sessionId, scenarioId, req, resp);
         } else if (
             parts.length == 4 &&
             "perturbations".equals(parts[1]) &&
             "entropy".equals(parts[3])
         ) {
-            // return perturbation entropy
+            String perturbationId = parts[2];
+            handlePerturbationEntropy(sessionId, perturbationId, req, resp);
         }
     }
 
@@ -296,6 +298,54 @@ public class SessionsServlet extends HttpServlet {
                 "Error fetching scenario entropy: sessionId={}, scenarioId={}: {}",
                 sessionId,
                 scenarioId,
+                e.getMessage(),
+                e
+            );
+            resp.setStatus(500);
+            sendJsonError(resp, "Server error: " + e.getMessage());
+        }
+    }
+
+    private void handlePerturbationEntropy(
+        String sessionId,
+        String perturbationId,
+        HttpServletRequest req,
+        HttpServletResponse resp
+    ) throws IOException {
+        logger.debug(
+            "GET /sessions/{}/perturbations/{}/entropy",
+            sessionId,
+            perturbationId
+        );
+
+        try {
+            Object result = sessionEntropyService.getEntropyForPerturbation(
+                sessionId,
+                perturbationId
+            );
+
+            if (result == null) {
+                logger.warn(
+                    "Perturbation entropy not found: sessionId={}, perturbationId={}",
+                    sessionId,
+                    perturbationId
+                );
+                resp.setStatus(404);
+                sendJsonError(resp, "Perturbation entropy not found");
+                return;
+            }
+
+            logger.info(
+                "Successfully retrieved entropy for sessionId={}, perturbationId={}",
+                sessionId,
+                perturbationId
+            );
+            sendJsonResponse(resp, result);
+        } catch (Exception e) {
+            logger.error(
+                "Error fetching perturbation entropy: sessionId={}, perturbationId={}: {}",
+                sessionId,
+                perturbationId,
                 e.getMessage(),
                 e
             );
