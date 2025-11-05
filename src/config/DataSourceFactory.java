@@ -1,7 +1,6 @@
 package config;
 
 import dao.*;
-import java.lang.IllegalArgumentException;
 
 public class DataSourceFactory {
 
@@ -12,12 +11,6 @@ public class DataSourceFactory {
         switch (sourceType.toLowerCase()) {
             case "file":
                 return new FileDataSourceDAOImpl(config.getFilePath());
-            case "kafka":
-                return new KafkaDataSourceDAOImpl(
-                    config.getKafkaTopic(),
-                    config.getKafkaBootstrapServers(),
-                    config.getKafkaGroupId()
-                );
             case "mongo":
                 return new MongoDataSourceDAOImpl(
                     config.getMongoUri(),

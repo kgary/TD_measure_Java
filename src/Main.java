@@ -1,3 +1,4 @@
+
 import config.*;
 import java.io.*;
 import java.util.*;
@@ -38,7 +39,7 @@ public class Main {
     }
 
     public static void dumpToFile(List<String> data, String fileName)
-        throws IOException {
+            throws IOException {
         try (FileWriter writer = new FileWriter(fileName)) {
             writer.write("[\n");
             for (int i = 0; i < data.size(); i++) {
@@ -57,52 +58,54 @@ public class Main {
         logger.info("Initializing STTC-Entropy Server");
 
         ConfigManager config = new ConfigManager(
-            "resources/runtime.properties"
+                "resources/runtime.properties"
         );
         logger.debug("Configuration loaded from runtime.properties");
 
         SessionEntropyService sessionEntropyService = new SessionEntropyService(
-            config
+                config
         );
         logger.info("SessionEntropyService initialized");
 
-        Server server = new Server(8081);
+        Server server = new Server(
+                Integer.parseInt(config.getServicePort())
+        );
         ServletContextHandler context = new ServletContextHandler(
-            ServletContextHandler.SESSIONS
+                ServletContextHandler.SESSIONS
         );
         context.setContextPath("/");
         server.setHandler(context);
 
         context.addServlet(
-            new ServletHolder(new EntropyServlet(sessionEntropyService)),
-            "/entropy/*"
+                new ServletHolder(new EntropyServlet(sessionEntropyService)),
+                "/entropy/*"
         );
         logger.info("Registered endpoint: /entropy/*");
 
         context.addServlet(
-            new ServletHolder(new SessionServlet(sessionEntropyService)),
-            "/session/*"
+                new ServletHolder(new SessionServlet(sessionEntropyService)),
+                "/session/*"
         );
         logger.info("Registered endpoint: /session/*");
 
         context.addServlet(
-            new ServletHolder(new TeamDynamicsServlet(sessionEntropyService)),
-            "/teamdynamics/*"
+                new ServletHolder(new TeamDynamicsServlet(sessionEntropyService)),
+                "/teamdynamics/*"
         );
         logger.info("Registered endpoint: /teamdynamics/*");
 
         context.addServlet(
-            new ServletHolder(new StoreSessionidServlet(sessionEntropyService)),
-            "/bindSessions/*"
+                new ServletHolder(new StoreSessionidServlet(sessionEntropyService)),
+                "/bindSessions/*"
         );
         logger.info("Registered endpoint: /bindSessions/*");
         context.addServlet(
-            new ServletHolder(new SessionsServlet(sessionEntropyService)),
-            "/sessions"
+                new ServletHolder(new SessionsServlet(sessionEntropyService)),
+                "/sessions"
         );
 
         server.start();
-        logger.info("Server started successfully on port 8081");
+        logger.info("Server started successfully on port " + config.getServicePort());
         logger.info("Available endpoints:");
         logger.info("  - http://localhost:8081/entropy/*");
         logger.info("  - http://localhost:8081/session/*");
