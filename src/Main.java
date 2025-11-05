@@ -66,7 +66,7 @@ public class Main {
         );
         logger.info("SessionEntropyService initialized");
 
-        Server server = new Server(8081);
+        Server server = new Server(Integer.parseInt(config.getServicePort()));
         ServletContextHandler context = new ServletContextHandler(
             ServletContextHandler.SESSIONS
         );
@@ -102,7 +102,9 @@ public class Main {
         );
 
         server.start();
-        logger.info("Server started successfully on port 8081");
+        logger.info(
+            "Server started successfully on port " + config.getServicePort()
+        );
         logger.info("Available endpoints:");
         logger.info("  - http://localhost:8081/entropy/*");
         logger.info("  - http://localhost:8081/session/*");
