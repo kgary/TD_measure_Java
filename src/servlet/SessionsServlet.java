@@ -54,7 +54,7 @@ public class SessionsServlet extends HttpServlet {
             "scenarios".equals(parts[1]) &&
             "entropy".equals(parts[3])
         ) {
-            // return scenario entropy
+            handleScenarioEntropy(sessionId, parts[2], req, resp);
         } else if (
             parts.length == 4 &&
             "perturbations".equals(parts[1]) &&
@@ -248,6 +248,54 @@ public class SessionsServlet extends HttpServlet {
             logger.error(
                 "Error fetching entropy for sessionId={}: {}",
                 sessionId,
+                e.getMessage(),
+                e
+            );
+            resp.setStatus(500);
+            sendJsonError(resp, "Server error: " + e.getMessage());
+        }
+    }
+
+    private void handleScenarioEntropy(
+        String sessionId,
+        String scenarioId,
+        HttpServletRequest req,
+        HttpServletResponse resp
+    ) throws IOException {
+        logger.debug(
+            "GET /sessions/{}/scenarios/{}/entropy",
+            sessionId,
+            scenarioId
+        );
+
+        try {
+            Object result = sessionEntropyService.getEntropyForScenario(
+                sessionId,
+                scenarioId
+            );
+
+            if (result == null) {
+                logger.warn(
+                    "Scenario entropy not found: sessionId={}, scenarioId={}",
+                    sessionId,
+                    scenarioId
+                );
+                resp.setStatus(404);
+                sendJsonError(resp, "Scenario entropy not found");
+                return;
+            }
+
+            logger.info(
+                "Successfully retrieved entropy for sessionId={}, scenarioId={}",
+                sessionId,
+                scenarioId
+            );
+            sendJsonResponse(resp, result);
+        } catch (Exception e) {
+            logger.error(
+                "Error fetching scenario entropy: sessionId={}, scenarioId={}: {}",
+                sessionId,
+                scenarioId,
                 e.getMessage(),
                 e
             );
