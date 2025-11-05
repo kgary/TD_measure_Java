@@ -32,11 +32,11 @@ When you run this script, it creates:
 ### Step 1: Download the Script
 
 # Clone the repo
-git clone https://github.com/kgary/TD_measure_Java.git
+`git clone https://github.com/kgary/TD_measure_Java.git`
 
 # Switch to branch
-cd TD_measure_Java
-git checkout 47-data-backup-to-external-pen-drive
+`cd TD_measure_Java
+git checkout 47-data-backup-to-external-pen-drive`
 
 # Follow the README instructions to configure and run
 
