@@ -49,6 +49,36 @@ public class SessionsServlet extends HttpServlet {
             handleGetSession(sessionId, req, resp);
         } else if (parts.length == 2 && "entropy".equals(parts[1])) {
             handleSessionEntropy(sessionId, req, resp);
+        } else if (parts.length == 2 && "scenarios".equals(parts[1])) {
+            logger.warn("Incomplete path: missing scenarioId");
+            resp.setStatus(400);
+            sendJsonError(resp, "Missing scenarioId in path");
+            return;
+        } else if (parts.length == 2 && "perturbations".equals(parts[1])) {
+            logger.warn("Incomplete path: missing perturbationId");
+            resp.setStatus(400);
+            sendJsonError(resp, "Missing perturbationId in path");
+            return;
+        } else if (parts.length == 3 && "scenarios".equals(parts[1])) {
+            logger.warn("Incomplete path: missing /entropy for scenario");
+            resp.setStatus(400);
+            sendJsonError(
+                resp,
+                "Invalid path. Did you mean /sessions/{}/scenarios/{}/entropy?",
+                sessionId,
+                parts[2]
+            );
+            return;
+        } else if (parts.length == 3 && "perturbations".equals(parts[1])) {
+            logger.warn("Incomplete path: missing /entropy for perturbation");
+            resp.setStatus(400);
+            sendJsonError(
+                resp,
+                "Invalid path. Did you mean /sessions/{}/perturbations/{}/entropy?",
+                sessionId,
+                parts[2]
+            );
+            return;
         } else if (
             parts.length == 4 &&
             "scenarios".equals(parts[1]) &&
@@ -362,10 +392,18 @@ public class SessionsServlet extends HttpServlet {
         resp.getWriter().write(json.writeValueAsString(data));
     }
 
-    private void sendJsonError(HttpServletResponse resp, Object data)
-        throws IOException {
+    private void sendJsonError(
+        HttpServletResponse resp,
+        String message,
+        Object... args
+    ) throws IOException {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
-        resp.getWriter().write(json.writeValueAsString(data));
+        String formattedMessage = args.length > 0
+            ? String.format(message, args)
+            : message;
+        resp
+            .getWriter()
+            .write(json.writeValueAsString(Map.of("error", formattedMessage)));
     }
 }
