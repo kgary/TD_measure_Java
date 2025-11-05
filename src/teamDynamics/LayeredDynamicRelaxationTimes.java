@@ -27,7 +27,7 @@ public class LayeredDynamicRelaxationTimes {
             return null; // or some other indication of no valid times
         }
 
-        Integer rt_init = aboveThreshTimes.isEmpty() ? null : aboveThreshTimes.get(0);
+        Integer rt_init = aboveThreshTimes.isEmpty() ? 0 : aboveThreshTimes.get(0);
 
         // 5. rt_peak (Note: contains logical error as per JS version)
         List<Integer> rt_peak = new ArrayList<>();
@@ -38,10 +38,10 @@ public class LayeredDynamicRelaxationTimes {
             }
         }
 
-        Integer rt_peak_value = rt_peak.isEmpty() ? null : rt_peak.get(0);
+        Integer rt_peak_value = rt_peak.isEmpty() ? 0 : rt_peak.get(0);
 
         // 6. rt_last: last index above threshold
-        Integer rt_last = aboveThreshTimes.isEmpty() ? null : aboveThreshTimes.get(aboveThreshTimes.size() - 1);
+        Integer rt_last = aboveThreshTimes.isEmpty() ? 0 : aboveThreshTimes.get(aboveThreshTimes.size() - 1);
 
         return new Integer[]{rt_init, rt_peak_value, rt_last};
     }
