@@ -1,15 +1,17 @@
 package servlet;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import exception.*;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.*;
@@ -171,20 +173,41 @@ public class SessionsServlet extends HttpServlet {
         String fromStr = req.getParameter("from");
         String toStr = req.getParameter("to");
         String timeStr = req.getParameter("time");
+        String layerStr = req.getParameter("layer");
 
         logger.debug(
-            "GET /sessions/{}/entropy - from={}, to={}, time={}",
+            "GET /sessions/{}/entropy - from={}, to={}, time={}, layer={}",
             sessionId,
             fromStr,
             toStr,
-            timeStr
+            timeStr,
+            layerStr
         );
 
         try {
             Integer from = fromStr != null ? Integer.parseInt(fromStr) : null;
             Integer to = toStr != null ? Integer.parseInt(toStr) : null;
             Integer time = timeStr != null ? Integer.parseInt(timeStr) : null;
-
+            EntropyLayer layer = null;
+            if (layerStr != null) {
+                try {
+                    layer = EntropyLayer.valueOf(layerStr.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    logger.warn("Invalid layer name {}", layerStr);
+                    resp.setStatus(400);
+                    sendJsonError(
+                        resp,
+                        "Invalid layer name. Valid options: " +
+                            String.join(
+                                ", ",
+                                Arrays.stream(EntropyLayer.values())
+                                    .map(Enum::name)
+                                    .toArray(String[]::new)
+                            )
+                    );
+                    return;
+                }
+            }
             if (time != null && (from != null || to != null)) {
                 logger.warn(
                     "Invalid params: cannot use 'time' with 'from'/'to'"
@@ -260,6 +283,23 @@ public class SessionsServlet extends HttpServlet {
                 return;
             }
 
+            if (layer != null) {
+                result = filterByLayer(result, layer, null);
+                if (result == null) {
+                    logger.warn(
+                        "Layer {} not found in entropy data for sessionId={}",
+                        layer,
+                        sessionId
+                    );
+                    resp.setStatus(404);
+                    sendJsonError(
+                        resp,
+                        "Layer " + layer + " not found in entropy data"
+                    );
+                    return;
+                }
+            }
+
             logger.debug(
                 "Successfully retrieved entropy for sessionId={}",
                 sessionId
@@ -288,19 +328,86 @@ public class SessionsServlet extends HttpServlet {
         }
     }
 
+    private Object filterByLayer(
+        Object entropyData,
+        EntropyLayer layer,
+        String id
+    ) {
+        if (entropyData instanceof SessionEntropyData) {
+            SessionEntropyData data = (SessionEntropyData) entropyData;
+            EntropyObject entropyObj = data.getSession_entropy();
+
+            if (entropyObj == null || entropyObj.getLayerEntropies() == null) {
+                return null;
+            }
+
+            double[] layerData = entropyObj.getLayerEntropies().get(layer);
+            if (layerData == null) {
+                return null;
+            }
+
+            Map<String, Object> filtered = new HashMap<>();
+            filtered.put("sessionId", data.getSessionID());
+            filtered.put("layer", layer.name());
+            filtered.put("entropy", layerData);
+            return filtered;
+        } else if (entropyData instanceof EntropyObject) {
+            EntropyObject entropyObj = (EntropyObject) entropyData;
+
+            if (entropyObj.getLayerEntropies() == null) {
+                return null;
+            }
+
+            double[] layerData = entropyObj.getLayerEntropies().get(layer);
+            if (layerData == null) {
+                return null;
+            }
+
+            Map<String, Object> filtered = new HashMap<>();
+            filtered.put("layer", layer.name());
+            filtered.put("entropy", layerData);
+            filtered.put("ID", id);
+            return filtered;
+        }
+
+        return null;
+    }
+
     private void handleScenarioEntropy(
         String sessionId,
         String scenarioId,
         HttpServletRequest req,
         HttpServletResponse resp
     ) throws IOException {
+        String layerStr = req.getParameter("layer");
         logger.debug(
-            "GET /sessions/{}/scenarios/{}/entropy",
+            "GET /sessions/{}/scenarios/{}/entropy - layer={}",
             sessionId,
-            scenarioId
+            scenarioId,
+            layerStr
         );
 
         try {
+            EntropyLayer layer = null;
+            if (layerStr != null) {
+                try {
+                    layer = EntropyLayer.valueOf(layerStr.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    logger.warn("Invalid layer name: {}", layerStr);
+                    resp.setStatus(400);
+                    sendJsonError(
+                        resp,
+                        "Invalid layer name. Valid options: " +
+                            String.join(
+                                ", ",
+                                Arrays.stream(EntropyLayer.values())
+                                    .map(Enum::name)
+                                    .toArray(String[]::new)
+                            )
+                    );
+                    return;
+                }
+            }
             Object result = sessionEntropyService.getEntropyForScenario(
                 sessionId,
                 scenarioId
@@ -315,6 +422,23 @@ public class SessionsServlet extends HttpServlet {
                 resp.setStatus(404);
                 sendJsonError(resp, "Scenario entropy not found");
                 return;
+            }
+            if (layer != null) {
+                result = filterByLayer(result, layer, scenarioId);
+                if (result == null) {
+                    logger.warn(
+                        "Layer {} not found for sessionId={}, scenarioId={}",
+                        layer,
+                        sessionId,
+                        scenarioId
+                    );
+                    resp.setStatus(404);
+                    sendJsonError(
+                        resp,
+                        "Layer " + layer + " not found in entropy data"
+                    );
+                    return;
+                }
             }
 
             logger.info(
@@ -342,6 +466,7 @@ public class SessionsServlet extends HttpServlet {
         HttpServletRequest req,
         HttpServletResponse resp
     ) throws IOException {
+        String layerStr = req.getParameter("layer");
         logger.debug(
             "GET /sessions/{}/perturbations/{}/entropy",
             sessionId,
@@ -349,6 +474,26 @@ public class SessionsServlet extends HttpServlet {
         );
 
         try {
+            EntropyLayer layer = null;
+            if (layerStr != null) {
+                try {
+                    layer = EntropyLayer.valueOf(layerStr.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    logger.warn("Invalid layer name: {}", layerStr);
+                    resp.setStatus(400);
+                    sendJsonError(
+                        resp,
+                        "Invalid layer name. Valid options: " +
+                            String.join(
+                                ", ",
+                                Arrays.stream(EntropyLayer.values())
+                                    .map(Enum::name)
+                                    .toArray(String[]::new)
+                            )
+                    );
+                    return;
+                }
+            }
             Object result = sessionEntropyService.getEntropyForPerturbation(
                 sessionId,
                 perturbationId
@@ -365,6 +510,23 @@ public class SessionsServlet extends HttpServlet {
                 return;
             }
 
+            if (layer != null) {
+                result = filterByLayer(result, layer, perturbationId);
+                if (result == null) {
+                    logger.warn(
+                        "Layer {} not found for sessionId={}, scenarioId={}",
+                        layer,
+                        sessionId,
+                        perturbationId
+                    );
+                    resp.setStatus(404);
+                    sendJsonError(
+                        resp,
+                        "Layer " + layer + " not found in entropy data"
+                    );
+                    return;
+                }
+            }
             logger.info(
                 "Successfully retrieved entropy for sessionId={}, perturbationId={}",
                 sessionId,
