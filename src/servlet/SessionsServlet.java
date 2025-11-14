@@ -1,19 +1,22 @@
 package servlet;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import exception.*;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import service.*;
 
-@WebServlet(urlPatterns = { "/session/*" })
+@WebServlet(urlPatterns = { "/sessions/*" })
 public class SessionsServlet extends HttpServlet {
 
     private static final Logger logger = LoggerFactory.getLogger(
@@ -36,7 +39,71 @@ public class SessionsServlet extends HttpServlet {
     @Override
     public void doGet(HttpServletRequest req, HttpServletResponse resp)
         throws ServletException, IOException {
+        String pathInfo = req.getPathInfo();
+
+        if (pathInfo == null || pathInfo.equals("/")) {
+            handleListSessions(req, resp);
+        }
+        String[] parts = pathInfo.substring(1).split("/");
+        String sessionId = parts[0];
+
+        if (parts.length == 1) {
+            handleGetSession(sessionId, req, resp);
+        } else if (parts.length == 2 && "entropy".equals(parts[1])) {
+            handleSessionEntropy(sessionId, req, resp);
+        } else if (parts.length == 2 && "scenarios".equals(parts[1])) {
+            logger.warn("Incomplete path: missing scenarioId");
+            resp.setStatus(400);
+            sendJsonError(resp, "Missing scenarioId in path");
+            return;
+        } else if (parts.length == 2 && "perturbations".equals(parts[1])) {
+            logger.warn("Incomplete path: missing perturbationId");
+            resp.setStatus(400);
+            sendJsonError(resp, "Missing perturbationId in path");
+            return;
+        } else if (parts.length == 3 && "scenarios".equals(parts[1])) {
+            logger.warn("Incomplete path: missing /entropy for scenario");
+            resp.setStatus(400);
+            sendJsonError(
+                resp,
+                "Invalid path. Did you mean /sessions/{}/scenarios/{}/entropy?",
+                sessionId,
+                parts[2]
+            );
+            return;
+        } else if (parts.length == 3 && "perturbations".equals(parts[1])) {
+            logger.warn("Incomplete path: missing /entropy for perturbation");
+            resp.setStatus(400);
+            sendJsonError(
+                resp,
+                "Invalid path. Did you mean /sessions/{}/perturbations/{}/entropy?",
+                sessionId,
+                parts[2]
+            );
+            return;
+        } else if (
+            parts.length == 4 &&
+            "scenarios".equals(parts[1]) &&
+            "entropy".equals(parts[3])
+        ) {
+            String scenarioId = parts[2];
+            handleScenarioEntropy(sessionId, scenarioId, req, resp);
+        } else if (
+            parts.length == 4 &&
+            "perturbations".equals(parts[1]) &&
+            "entropy".equals(parts[3])
+        ) {
+            String perturbationId = parts[2];
+            handlePerturbationEntropy(sessionId, perturbationId, req, resp);
+        }
+    }
+
+    public void handleListSessions(
+        HttpServletRequest req,
+        HttpServletResponse resp
+    ) throws IOException {
         logger.debug("GET /sessions - Fetching all sessions");
+
         try {
             Map<String, Object> result =
                 sessionEntropyService.listAllSessions();
@@ -62,6 +129,423 @@ public class SessionsServlet extends HttpServlet {
         }
     }
 
+    private void handleGetSession(
+        String sessionId,
+        HttpServletRequest req,
+        HttpServletResponse resp
+    ) throws IOException {
+        logger.debug("GET /sessions/{} - Fetching session metadata", sessionId);
+        try {
+            Object result = sessionEntropyService.getSessionMetadata(sessionId);
+
+            if (result == null) {
+                logger.warn(
+                    "Session metadata not found: sessionId={}",
+                    sessionId
+                );
+                resp.setStatus(404);
+                sendJsonError(resp, "Session not found");
+                return;
+            }
+
+            logger.info(
+                "Successfully retrieved metadata for sessionId={}",
+                sessionId
+            );
+            sendJsonResponse(resp, result);
+        } catch (Exception e) {
+            logger.error(
+                "Error fetching metadata for sessionId={}: {}",
+                sessionId,
+                e.getMessage(),
+                e
+            );
+            resp.setStatus(500);
+            sendJsonError(resp, "Server error: " + e.getMessage());
+        }
+    }
+
+    private void handleSessionEntropy(
+        String sessionId,
+        HttpServletRequest req,
+        HttpServletResponse resp
+    ) throws IOException {
+        String fromStr = req.getParameter("from");
+        String toStr = req.getParameter("to");
+        String timeStr = req.getParameter("time");
+        String layerStr = req.getParameter("layer");
+
+        logger.debug(
+            "GET /sessions/{}/entropy - from={}, to={}, time={}, layer={}",
+            sessionId,
+            fromStr,
+            toStr,
+            timeStr,
+            layerStr
+        );
+
+        try {
+            Integer from = fromStr != null ? Integer.parseInt(fromStr) : null;
+            Integer to = toStr != null ? Integer.parseInt(toStr) : null;
+            Integer time = timeStr != null ? Integer.parseInt(timeStr) : null;
+            EntropyLayer layer = null;
+            if (layerStr != null) {
+                try {
+                    layer = EntropyLayer.valueOf(layerStr.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    logger.warn("Invalid layer name {}", layerStr);
+                    resp.setStatus(400);
+                    sendJsonError(
+                        resp,
+                        "Invalid layer name. Valid options: " +
+                            String.join(
+                                ", ",
+                                Arrays.stream(EntropyLayer.values())
+                                    .map(Enum::name)
+                                    .toArray(String[]::new)
+                            )
+                    );
+                    return;
+                }
+            }
+            if (time != null && (from != null || to != null)) {
+                logger.warn(
+                    "Invalid params: cannot use 'time' with 'from'/'to'"
+                );
+                resp.setStatus(400);
+                sendJsonError(
+                    resp,
+                    "Cannot specify 'time' together with 'from' or 'to'"
+                );
+                return;
+            }
+
+            if ((from != null && to == null) || (from == null && to != null)) {
+                logger.warn(
+                    "Invalid params: must specify both 'from' and 'to'"
+                );
+                resp.setStatus(400);
+                sendJsonError(
+                    resp,
+                    "Must specify both 'from' and 'to' for range query"
+                );
+                return;
+            }
+
+            if (from != null && to != null && from >= to) {
+                logger.warn(
+                    "Invalid range: from={} must be less than to={}",
+                    from,
+                    to
+                );
+                resp.setStatus(400);
+                sendJsonError(resp, "from must be less than to");
+                return;
+            }
+
+            Object result;
+            if (time != null) {
+                logger.info(
+                    "Fetching entropy at time={} for sessionId={}",
+                    time,
+                    sessionId
+                );
+                result = sessionEntropyService.getEntropyAtTime(
+                    sessionId,
+                    time
+                );
+            } else if (from != null && to != null) {
+                logger.info(
+                    "Fetching entropy in range [{}->{}] for sessionId={}",
+                    from,
+                    to,
+                    sessionId
+                );
+                result = sessionEntropyService.getEntropyInTimeRange(
+                    sessionId,
+                    from,
+                    to
+                );
+            } else {
+                logger.info(
+                    "Fetching entire session entropy for sessionId={}",
+                    sessionId
+                );
+                result = sessionEntropyService.getEntireSessionEntropy(
+                    sessionId
+                );
+            }
+
+            if (result == null) {
+                logger.warn("Entropy not found for sessionId={}", sessionId);
+                resp.setStatus(404);
+                sendJsonError(resp, "Session entropy not found");
+                return;
+            }
+
+            if (layer != null) {
+                result = filterByLayer(result, layer, null);
+                if (result == null) {
+                    logger.warn(
+                        "Layer {} not found in entropy data for sessionId={}",
+                        layer,
+                        sessionId
+                    );
+                    resp.setStatus(404);
+                    sendJsonError(
+                        resp,
+                        "Layer " + layer + " not found in entropy data"
+                    );
+                    return;
+                }
+            }
+
+            logger.debug(
+                "Successfully retrieved entropy for sessionId={}",
+                sessionId
+            );
+            sendJsonResponse(resp, result);
+        } catch (NumberFormatException e) {
+            logger.error(
+                "Invalid number format in query parameters: {}",
+                e.getMessage()
+            );
+            resp.setStatus(400);
+            sendJsonError(resp, "Invalid number format for query parameters");
+        } catch (IncompleteSessionException e) {
+            logger.warn("Incomplete session data: {}", e.getMessage());
+            resp.setStatus(422);
+            sendJsonError(resp, "Incomplete session: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error(
+                "Error fetching entropy for sessionId={}: {}",
+                sessionId,
+                e.getMessage(),
+                e
+            );
+            resp.setStatus(500);
+            sendJsonError(resp, "Server error: " + e.getMessage());
+        }
+    }
+
+    private Object filterByLayer(
+        Object entropyData,
+        EntropyLayer layer,
+        String id
+    ) {
+        if (entropyData instanceof SessionEntropyData) {
+            SessionEntropyData data = (SessionEntropyData) entropyData;
+            EntropyObject entropyObj = data.getSession_entropy();
+
+            if (entropyObj == null || entropyObj.getLayerEntropies() == null) {
+                return null;
+            }
+
+            double[] layerData = entropyObj.getLayerEntropies().get(layer);
+            if (layerData == null) {
+                return null;
+            }
+
+            Map<String, Object> filtered = new HashMap<>();
+            filtered.put("sessionId", data.getSessionID());
+            filtered.put("layer", layer.name());
+            filtered.put("entropy", layerData);
+            return filtered;
+        } else if (entropyData instanceof EntropyObject) {
+            EntropyObject entropyObj = (EntropyObject) entropyData;
+
+            if (entropyObj.getLayerEntropies() == null) {
+                return null;
+            }
+
+            double[] layerData = entropyObj.getLayerEntropies().get(layer);
+            if (layerData == null) {
+                return null;
+            }
+
+            Map<String, Object> filtered = new HashMap<>();
+            filtered.put("layer", layer.name());
+            filtered.put("entropy", layerData);
+            filtered.put("ID", id);
+            return filtered;
+        }
+
+        return null;
+    }
+
+    private void handleScenarioEntropy(
+        String sessionId,
+        String scenarioId,
+        HttpServletRequest req,
+        HttpServletResponse resp
+    ) throws IOException {
+        String layerStr = req.getParameter("layer");
+        logger.debug(
+            "GET /sessions/{}/scenarios/{}/entropy - layer={}",
+            sessionId,
+            scenarioId,
+            layerStr
+        );
+
+        try {
+            EntropyLayer layer = null;
+            if (layerStr != null) {
+                try {
+                    layer = EntropyLayer.valueOf(layerStr.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    logger.warn("Invalid layer name: {}", layerStr);
+                    resp.setStatus(400);
+                    sendJsonError(
+                        resp,
+                        "Invalid layer name. Valid options: " +
+                            String.join(
+                                ", ",
+                                Arrays.stream(EntropyLayer.values())
+                                    .map(Enum::name)
+                                    .toArray(String[]::new)
+                            )
+                    );
+                    return;
+                }
+            }
+            Object result = sessionEntropyService.getEntropyForScenario(
+                sessionId,
+                scenarioId
+            );
+
+            if (result == null) {
+                logger.warn(
+                    "Scenario entropy not found: sessionId={}, scenarioId={}",
+                    sessionId,
+                    scenarioId
+                );
+                resp.setStatus(404);
+                sendJsonError(resp, "Scenario entropy not found");
+                return;
+            }
+            if (layer != null) {
+                result = filterByLayer(result, layer, scenarioId);
+                if (result == null) {
+                    logger.warn(
+                        "Layer {} not found for sessionId={}, scenarioId={}",
+                        layer,
+                        sessionId,
+                        scenarioId
+                    );
+                    resp.setStatus(404);
+                    sendJsonError(
+                        resp,
+                        "Layer " + layer + " not found in entropy data"
+                    );
+                    return;
+                }
+            }
+
+            logger.info(
+                "Successfully retrieved entropy for sessionId={}, scenarioId={}",
+                sessionId,
+                scenarioId
+            );
+            sendJsonResponse(resp, result);
+        } catch (Exception e) {
+            logger.error(
+                "Error fetching scenario entropy: sessionId={}, scenarioId={}: {}",
+                sessionId,
+                scenarioId,
+                e.getMessage(),
+                e
+            );
+            resp.setStatus(500);
+            sendJsonError(resp, "Server error: " + e.getMessage());
+        }
+    }
+
+    private void handlePerturbationEntropy(
+        String sessionId,
+        String perturbationId,
+        HttpServletRequest req,
+        HttpServletResponse resp
+    ) throws IOException {
+        String layerStr = req.getParameter("layer");
+        logger.debug(
+            "GET /sessions/{}/perturbations/{}/entropy",
+            sessionId,
+            perturbationId
+        );
+
+        try {
+            EntropyLayer layer = null;
+            if (layerStr != null) {
+                try {
+                    layer = EntropyLayer.valueOf(layerStr.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    logger.warn("Invalid layer name: {}", layerStr);
+                    resp.setStatus(400);
+                    sendJsonError(
+                        resp,
+                        "Invalid layer name. Valid options: " +
+                            String.join(
+                                ", ",
+                                Arrays.stream(EntropyLayer.values())
+                                    .map(Enum::name)
+                                    .toArray(String[]::new)
+                            )
+                    );
+                    return;
+                }
+            }
+            Object result = sessionEntropyService.getEntropyForPerturbation(
+                sessionId,
+                perturbationId
+            );
+
+            if (result == null) {
+                logger.warn(
+                    "Perturbation entropy not found: sessionId={}, perturbationId={}",
+                    sessionId,
+                    perturbationId
+                );
+                resp.setStatus(404);
+                sendJsonError(resp, "Perturbation entropy not found");
+                return;
+            }
+
+            if (layer != null) {
+                result = filterByLayer(result, layer, perturbationId);
+                if (result == null) {
+                    logger.warn(
+                        "Layer {} not found for sessionId={}, scenarioId={}",
+                        layer,
+                        sessionId,
+                        perturbationId
+                    );
+                    resp.setStatus(404);
+                    sendJsonError(
+                        resp,
+                        "Layer " + layer + " not found in entropy data"
+                    );
+                    return;
+                }
+            }
+            logger.info(
+                "Successfully retrieved entropy for sessionId={}, perturbationId={}",
+                sessionId,
+                perturbationId
+            );
+            sendJsonResponse(resp, result);
+        } catch (Exception e) {
+            logger.error(
+                "Error fetching perturbation entropy: sessionId={}, perturbationId={}: {}",
+                sessionId,
+                perturbationId,
+                e.getMessage(),
+                e
+            );
+            resp.setStatus(500);
+            sendJsonError(resp, "Server error: " + e.getMessage());
+        }
+    }
+
     private void sendJsonResponse(HttpServletResponse resp, Object data)
         throws IOException {
         resp.setContentType("application/json");
@@ -70,10 +554,18 @@ public class SessionsServlet extends HttpServlet {
         resp.getWriter().write(json.writeValueAsString(data));
     }
 
-    private void sendJsonError(HttpServletResponse resp, Object data)
-        throws IOException {
+    private void sendJsonError(
+        HttpServletResponse resp,
+        String message,
+        Object... args
+    ) throws IOException {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
-        resp.getWriter().write(json.writeValueAsString(data));
+        String formattedMessage = args.length > 0
+            ? String.format(message, args)
+            : message;
+        resp
+            .getWriter()
+            .write(json.writeValueAsString(Map.of("error", formattedMessage)));
     }
 }
