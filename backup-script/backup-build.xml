@@ -3,12 +3,12 @@
     
     <description>
         GIFT Data Backup Script
-        Backs up data and output folders with timestamp
+        Backs up data, output, and config folders with timestamp
     </description>
     
     <!-- Configuration Properties -->
     <property name="gift.base.dir" location="C:/GIFT-ASU-EXP/GIFT-ASU/GIFT"/>
-    <property name="backup.destination.dir" location="E:\GIFT-BACKUP-DATA"/>
+    <property name="backup.destination.dir" location="C:/GIFT-ASU-EXP/Gift-backup/data"/>
     
     <!-- Create timestamp and temp directory -->
     <target name="init">
@@ -57,6 +57,10 @@
         <!-- Check if output folder exists -->
         <available file="${gift.base.dir}/output" type="dir" property="output.folder.exists"/>
         <fail unless="output.folder.exists" message="ERROR: output folder not found at ${gift.base.dir}/output"/>
+
+        <!-- Check if config folder exists -->
+        <available file="${gift.base.dir}/config" type="dir" property="config.folder.exists"/>
+        <fail unless="config.folder.exists" message="ERROR: config folder not found at ${gift.base.dir}/config"/>
         
         <!-- Copy data folder to staging -->
         <echo message="  Copying 'data' folder..."/>
@@ -69,10 +73,18 @@
         <copy todir="${temp.staging.dir}/output">
             <fileset dir="${gift.base.dir}/output"/>
         </copy>
+
+        <!-- Copy config folder to staging -->
+        <echo message="  Copying 'config' folder..."/>
+        <copy todir="${temp.staging.dir}/config">
+            <fileset dir="${gift.base.dir}/config"/>
+        </copy>
         
         <echo message="Folders staged successfully"/>
         <echo message=""/>
     </target>
+
+        
     
     <!-- Generate README file -->
     <target name="generate-readme" depends="stage-folders">
@@ -100,12 +112,13 @@
         Folders Backed Up:
             - data/     (from ${gift.base.dir}/data)
             - output/   (from ${gift.base.dir}/output)
+            - config/   (from ${gift.base.dir}/config)
 
         ========================================
         BACKUP CONTENTS
         ========================================
 
-        This backup contains two folders:
+        This backup contains three folders:
 
         1. data/
             Contains all data files from the GIFT system
@@ -113,14 +126,18 @@
         2. output/
             Contains all output files from the GIFT system
 
+        3. config/
+            Contains all configuration files from the GIFT system
+
         ========================================
         RESTORATION INSTRUCTIONS
         ========================================
 
         To restore this backup:
-            1. Extract this zip file to your desired location
-            2. Copy the 'data' folder to: [YOUR_GIFT_INSTALLATION]/data
-            3. Copy the 'output' folder to: [YOUR_GIFT_INSTALLATION]/output
+        1. Extract this zip file to your desired location
+        2. Copy the 'data' folder to: [YOUR_GIFT_INSTALLATION]/data
+        3. Copy the 'output' folder to: [YOUR_GIFT_INSTALLATION]/output
+        4. Copy the 'config' folder to: [YOUR_GIFT_INSTALLATION]/config
 
     IMPORTANT: Make sure to backup any existing data before restoration!
 
@@ -175,6 +192,7 @@
         <echo message="  - README.txt (backup information)"/>
         <echo message="  - data/"/>
         <echo message="  - output/"/>
+        <echo message="  - config/"/>
         <echo message=""/>
         <echo message="You can now copy the backup file to your pendrive."/>
         <echo message=""/>
